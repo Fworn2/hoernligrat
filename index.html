@@ -360,7 +360,7 @@ const MAJOR = new Set([0, Z, Z + 1, HUT, SOLVAY, 24, GOAL]);
 /* ============ world geometry (drawing only; HUD altitudes come from ROUTE) ============ */
 const ALT_Y = a => (4620 - a) * 0.3;
 const Y_ALT = y => 4620 - y / 0.3;
-const SKYLINE = [[-1700,630],[-1340,651],[-1250,690],[-1180,800],[-1100,960],[-1020,1130],[-920,1300],[-820,1440],[-720,1560],[-665,1608],[-500,1608],[-490,1612],[-470,1750],[-440,2100],[-410,2450],[-392,2583],[-362,2583],[-352,2640],[-335,2800],[-322,2900],[-312,2905],[-305,2960],[-290,3120],[-270,3230],[-256,3255],[-240,3277],[-205,3420],[-168,3600],[-144,3745],[-112,3880],[-88,4003],[-70,4100],[-54,4195],[-32,4232],[-16,4360],[0,4478],[6,4474],[12,4470],[40,3900],[80,3300],[130,2850],[170,2740],[260,2660],[360,2520],[520,2200],[1200,1900]];
+const SKYLINE = [[-1700,630],[-1340,651],[-1250,690],[-1180,800],[-1100,960],[-1020,1130],[-920,1300],[-820,1440],[-720,1560],[-665,1608],[-500,1608],[-490,1612],[-470,1750],[-440,2100],[-410,2450],[-392,2583],[-362,2583],[-352,2640],[-335,2800],[-322,2900],[-312,2905],[-305,2960],[-290,3120],[-270,3230],[-256,3255],[-240,3277],[-205,3420],[-168,3600],[-144,3745],[-112,3880],[-88,4003],[-70,4100],[-54,4195],[-32,4232],[-16,4360],[-7,4466],[-3,4475],[0,4478],[9,4478],[13,4472],[17,4440],[40,3900],[80,3300],[130,2850],[170,2740],[260,2660],[360,2520],[520,2200],[1200,1900]];
 const RIDGE = SKYLINE.filter(p => p[0] >= -240 && p[0] <= 0);
 const lerp = (a, b, t) => a + (b - a) * t;
 const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
@@ -387,7 +387,8 @@ const G = new Float32Array(GW);
 for (let i = 0; i < GW; i++) {
   const x = i - XOFF;
   let a = baseAlt(x);
-  const crag = x > -300 ? 1 : x > -350 ? 0.4 : 0;
+  const crag = (x > -300 ? 1 : x > -350 ? 0.4 : 0) * clamp((Math.abs(x - 4) - 9) / 10, 0, 1); // glatter Gipfel
+
   a += crag * ((vnoise(x / 5, 3) - 0.5) * 22 + (vnoise(x / 1.7, 9) - 0.5) * 9);
   G[i] = ALT_Y(a);
 }
@@ -412,6 +413,7 @@ function xAtAlt(a) {
   ROUTE[GOAL].x = 0;
 })();
 // glacier at the foot of the east face (same side as the route)
+const MAST_X = 12; // Fahnenmast am rechten Rand des Gipfels, die Geiss steht bei x = 0
 const GL_X0 = -236, GL_X1 = 110;
 const glTop = x => ALT_Y(3090 + 35 * Math.sin(x / 37) + (vnoise(x / 9, 4) - 0.5) * 30);
 const glBot = x => ALT_Y(2620 + (vnoise(x / 13, 8) - 0.5) * 80);
@@ -933,7 +935,7 @@ function draw(now) {
     lctx.fillStyle = "#0e1a2b"; lctx.fillRect(sx, sy, 1, 1);
   });
   if (cer) {
-    const [px, py] = P(0, gY(0));
+    const [px, py] = P(MAST_X, gY(MAST_X));
     lctx.fillStyle = "#b8b8c0"; lctx.fillRect(px, py - 62, 1, 62); lctx.fillStyle = "#ffd23a"; lctx.fillRect(px - 1, py - 64, 3, 2);
     const fh = Math.round(lerp(4, 49, clamp(cer.p / 0.92, 0, 1))), fy = py - fh - 1, wave = Math.floor(now / 260) % 2;
     lctx.fillStyle = "#e3001b"; lctx.fillRect(px + 1, fy - 10, 11, 11);
@@ -1718,7 +1720,7 @@ async function stagger(target) { // nach dem Fendant
 function stopAnthem() { if (anthem) { try { anthem.pause(); } catch (e) {} anthem = null; } }
 function startCeremony() {
   state.phase = "ceremony"; hideCards();
-  goat.x = -12; goat.flip = false;
+  goat.x = 0; goat.flip = false;
   const xs = [-24, -34, -44, -54, -64, -74, -84, -94, -104, -114, -124, -134];
   cer = { t0: performance.now(), dur: 30000, p: 0, done: false, goats: [] };
   if (soundOn) {
