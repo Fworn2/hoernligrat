@@ -86,6 +86,10 @@ button{cursor:pointer}
   padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:flex;justify-content:center;pointer-events:none}
 .card{pointer-events:auto;width:100%;max-width:780px;max-height:min(66vh,680px);overflow:auto;background:rgba(14,26,43,.96);box-shadow:inset 0 0 0 2px var(--edge);padding:16px 20px 18px;display:flex;flex-direction:column;gap:12px}
 .card.quest{box-shadow:inset 0 0 0 2px var(--gold)}
+#nameShade{position:fixed;inset:0;background:rgba(5,12,22,.6);z-index:40}
+#nameCard{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);width:min(620px,calc(100vw - 32px));max-height:calc(100vh - 32px);z-index:41;padding:22px 24px 22px}
+#nameCard .qtext{font-size:30px}
+#startName{font-size:24px}
 .eyebrow{display:flex;justify-content:space-between;gap:12px;align-items:baseline;font-size:15px;letter-spacing:.2em;text-transform:uppercase;color:var(--pink)}
 .card.quest .eyebrow{color:var(--gold)}
 .eyebrow .quit{background:none;border:0;color:var(--mute);font-size:15px;letter-spacing:.15em;padding:0}
@@ -240,10 +244,21 @@ sub,sup{font-size:.7em;line-height:0}
       <div class="chips" id="modeChips"></div>
     </div>
     <div class="warn" id="poolWarn" hidden></div>
-    <div class="namerow"><label for="startName">Dein Name</label><input id="startName" maxlength="18" autocomplete="off" spellcheck="false" placeholder="leer = Zufallsname"><button class="chip mini" id="diceBtn" type="button">ZUFALLSNAME</button></div>
     <button class="btn go" id="goBtn">▲ AUFSTIEG BEGINNEN ▲</button>
     <div class="set" id="boardBox" hidden><span class="lbl" id="boardLbl">Bestenliste · dieses Gerät</span><ol class="board" id="board"></ol></div>
     <div class="meta"><span id="best"></span><button class="chip mini" id="soundBtn" aria-pressed="true">TON AN</button></div>
+  </section>
+
+  <div id="nameShade" hidden></div>
+  <section class="card notch quest" id="nameCard" hidden>
+    <div class="eyebrow"><span>Hörnlihütte · Tourenbuch</span></div>
+    <h2 class="qtext">Wer klettert heute?</h2>
+    <div class="expl"><p style="margin:0">Trag deinen Namen ins Tourenbuch ein – mit ihm erscheinst du am Schluss in der Bestenliste aller Spieler. Lässt du das Feld leer, bekommst du einen zufälligen Chemie-Namen.</p></div>
+    <form class="inbar" id="nameForm" autocomplete="off">
+      <input id="startName" type="text" maxlength="18" autocomplete="off" spellcheck="false" placeholder="Dein Name" aria-label="Dein Name">
+      <button class="btn alt" id="diceBtn" type="button">ZUFALLSNAME</button>
+    </form>
+    <div class="row"><button class="btn alt" id="nameBack" type="button">ZURÜCK</button><button class="btn gold" id="nameGo" type="button">▲ LOS GEHT'S</button></div>
   </section>
 
   <section class="card notch quest" id="meetCard" hidden>
@@ -1120,7 +1135,6 @@ function renderSettings() {
   $("best").textContent = best.summits ? `Gipfel erreicht: ${best.summits}×` : best.pos > Z ? `Höchster Punkt bisher: ${ROUTE[best.pos].n}` : `${n} Fragen bereit`;
   $("soundBtn").textContent = soundOn ? "TON AN" : "TON AUS";
   $("soundBtn").setAttribute("aria-pressed", soundOn);
-  if (!$("startName").value) $("startName").value = store.get("name", "");
   if (ONLINE) return startBoard();
   const list = store.get("scores", []);
   $("boardBox").hidden = !list.length;
@@ -1238,11 +1252,12 @@ function boardHtml(list, meId, n) {
   return list.slice(0, n).map((e, i) => `<li class="${e.id === meId ? "me" : ""}"><span class="r">${i + 1}.</span><span class="n">${esc(e.name)}</span><span class="h">${e.win ? "Gipfel" : "Etappe " + e.top}</span><span class="p">${fmtPts(e.score)}</span></li>`).join("");
 }
 function show(which) {
-  for (const [id, k] of [["startCard", "start"], ["qCard", "q"], ["endCard", "end"], ["meetCard", "meet"], ["miniCard", "mini"], ["tipsyCard", "tipsy"]]) $(id).hidden = which !== k;
-  $("title").hidden = which !== "start";
-  $("hud").hidden = which === "start";
+  for (const [id, k] of [["startCard", "start"], ["qCard", "q"], ["endCard", "end"], ["meetCard", "meet"], ["miniCard", "mini"], ["tipsyCard", "tipsy"], ["nameCard", "name"]]) $(id).hidden = which !== k;
+  $("title").hidden = which !== "start" && which !== "name";
+  $("hud").hidden = which === "start" || which === "name";
+  $("nameShade").hidden = which !== "name";
 }
-function hideCards() { for (const id of ["startCard", "qCard", "endCard", "meetCard", "miniCard", "tipsyCard"]) $(id).hidden = true; }
+function hideCards() { for (const id of ["startCard", "qCard", "endCard", "meetCard", "miniCard", "tipsyCard", "nameCard"]) $(id).hidden = true; $("nameShade").hidden = true; }
 
 function startGame() {
   gid++;
@@ -1723,7 +1738,16 @@ function toMenu() {
 }
 
 /* ============ wiring ============ */
-$("goBtn").onclick = startGame;
+$("goBtn").onclick = askName;
+function askName() {
+  state.phase = "name";
+  if (!$("startName").value) $("startName").value = store.get("name", "");
+  show("name"); $("startName").focus({ preventScroll: true }); $("startName").select();
+}
+$("nameGo").onclick = () => { if (state.phase === "name") startGame(); };
+$("nameForm").addEventListener("submit", e => { e.preventDefault(); if (state.phase === "name") startGame(); });
+$("nameBack").onclick = () => { state.phase = "start"; show("start"); };
+$("nameShade").onclick = () => $("nameBack").click();
 $("againBtn").onclick = startGame;
 $("menuBtn").onclick = toMenu;
 $("quitBtn").onclick = toMenu;
