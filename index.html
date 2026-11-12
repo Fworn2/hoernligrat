@@ -159,6 +159,15 @@ sub,sup{font-size:.7em;line-height:0}
 .go{font-size:30px;letter-spacing:.25em;padding:12px}
 .meta{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;font-size:16px;color:var(--mute)}
 .warn{color:var(--gold);font-size:16px}
+.endsec{display:flex;flex-direction:column;gap:8px}
+.sechead{display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap;font-size:14px;letter-spacing:.2em;text-transform:uppercase;color:var(--mute)}
+.sechead #endName,.sechead #rankTxt{letter-spacing:.04em;text-transform:none;font-size:17px}
+.sechead #endName b{color:#fff;font-weight:400}
+.endsec.lb{margin-top:6px;padding:12px 14px 14px;background:rgba(255,207,107,.07);box-shadow:inset 0 0 0 2px var(--gold)}
+.endsec.lb .sechead{color:var(--gold)} .endsec.lb #rankTxt{color:#fff1a8}
+.endsec.lb .board{font-size:19px;gap:4px}
+.endsec.lb .board li{padding:2px 6px}
+.endsec.lb .board li.me{background:rgba(255,207,107,.18)}
 .stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
 .stat{background:var(--navy2);box-shadow:inset 0 0 0 2px var(--edge);padding:6px 10px}
 .stat b{display:block;font-weight:400;font-size:30px;color:var(--cyan);font-variant-numeric:tabular-nums}
@@ -309,9 +318,14 @@ sub,sup{font-size:.7em;line-height:0}
     <h2 class="endtitle" id="endTitle"></h2>
     <div class="scorebig" id="endScore"></div>
     <div class="expl" id="endText"></div>
-    <div class="namerow" id="endName"></div>
-    <div class="stats" id="endStats"></div>
-    <ol class="board" id="endBoard"></ol>
+    <div class="endsec">
+      <div class="sechead"><span>Dein Ergebnis</span><span id="endName"></span></div>
+      <div class="stats" id="endStats"></div>
+    </div>
+    <div class="endsec lb">
+      <div class="sechead"><span id="endBoardLbl">Bestenliste · alle Spieler</span><span id="rankTxt"></span></div>
+      <ol class="board" id="endBoard"></ol>
+    </div>
     <div class="lesson" id="lesson" hidden></div>
     <details id="reviewBox"><summary id="reviewSum"></summary><ul class="review" id="review"></ul></details>
     <div class="btnrow"><button class="btn" id="againBtn">▲ NEUER AUFSTIEG</button><button class="btn alt" id="menuBtn">EINSTELLUNGEN</button></div>
@@ -1240,12 +1254,12 @@ async function endBoardOnline(entry) {
     let html = boardHtml(top, id, 10);
     if (!top.some(e => e.id === id)) html += `<li class="gap"><span class="r">…</span></li><li class="me"><span class="r">${rank}.</span><span class="n">${esc(entry.name)}</span><span class="h">${entry.win ? "Gipfel" : "Etappe " + entry.top}</span><span class="p">${fmtPts(entry.score)}</span></li>`;
     box.innerHTML = html;
-    rt.textContent = `· Platz ${rank} von ${total} in der Bestenliste aller Spieler`;
+    rt.textContent = `Du bist auf Platz ${rank} von ${total}`;
   } catch (err) {
     console.warn(err);
     const l = store.get("scores", []);
     box.innerHTML = boardHtml(l, entry.id, 5);
-    rt.textContent = "· Online-Bestenliste gerade nicht erreichbar – hier deine Liste auf diesem Gerät";
+    $("endBoardLbl").textContent = "Bestenliste · dieses Gerät"; rt.textContent = "Online gerade nicht erreichbar";
   }
 }
 function boardHtml(list, meId, n) {
@@ -1539,9 +1553,10 @@ function showEnd() {
   const keep = list.slice(0, 30); store.set("scores", keep);
   const rank = keep.findIndex(e => e.id === entry.id) + 1;
   $("endScore").textContent = `${fmtPts(state.score)} Punkte`;
-  $("endName").innerHTML = `Gespielt als <b>${esc(entry.name)}</b> <span id="rankTxt"></span>`;
+  $("endName").innerHTML = `als <b>${esc(entry.name)}</b>`;
+  $("endBoardLbl").textContent = ONLINE ? "Bestenliste · alle Spieler" : "Bestenliste · dieses Gerät";
   if (ONLINE) endBoardOnline(entry);
-  else { $("rankTxt").textContent = rank ? `· Platz ${rank} deiner Bestenliste` : "· nicht in den Top 30"; $("endBoard").innerHTML = boardHtml(keep, entry.id, 5); }
+  else { $("rankTxt").textContent = rank ? `Du bist auf Platz ${rank}` : "nicht in den Top 30"; $("endBoard").innerHTML = boardHtml(keep, entry.id, 5); }
   $("endStats").innerHTML = [["Fragen", state.asked], ["Richtig", state.right], ["Quote", pct + " %"], ["Höchste Etappe", Math.max(0, state.maxPos - Z) + " / 24"]]
     .map(([k, v]) => `<div class="stat"><span class="lbl">${k}</span><b>${v}</b></div>`).join("");
   const L = $("lesson");
