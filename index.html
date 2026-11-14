@@ -102,6 +102,7 @@ button{cursor:pointer}
 .opt .k{flex:none;width:24px;height:24px;display:grid;place-items:center;background:var(--edge);color:var(--cyan);font-size:18px}
 .opt .body{display:flex;flex-direction:column;gap:6px;min-width:0}
 .opt img{display:block;background:#fff;max-width:100%;height:auto;max-height:110px;object-fit:contain;padding:4px}
+.opts.pics.big .opt img{max-height:190px;width:100%} /* AC: VSEPR-Strukturen brauchen mehr Platz */
 .opt:disabled{cursor:default}
 .opt.right{background:#173a2a;box-shadow:inset 0 0 0 2px var(--good)}
 .opt.right .k{background:var(--good);color:var(--navy)}
@@ -1414,7 +1415,7 @@ function nextQ() {
   if (q.t === "mc") {
     form.hidden = true; opts.hidden = false;
     state.opts = shuffle(q.o.map((t, i) => ({ t, i, img: q.ofig ? q.ofig[i] : null })));
-    opts.classList.toggle("pics", !!q.ofig);
+    opts.classList.toggle("pics", !!q.ofig); opts.classList.toggle("big", !!q.ofig && MOD === "ac");
     state.opts.forEach((o, i) => {
       const b = document.createElement("button");
       b.type = "button"; b.className = "opt";
