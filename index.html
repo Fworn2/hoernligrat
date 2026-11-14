@@ -284,7 +284,7 @@ sub,sup{font-size:.7em;line-height:0}
       <li class="dn">Falsche Antwort: Geröll oder Steinschlag werfen dich zurück, Fehler in Serie immer weiter (1, 2, 3 … Etappen). Unter Zermatt geht es mit dem Zug talwärts Richtung Visp.</li>
       <li class="dn">Der fünfte Fehler: Absturz in die Gletscherspalte – ausser die Rega erwischt dich unterwegs (Glückssache, und der Einsatz kostet Punkte).</li>
       <li class="q">Punkte: 100 pro richtige Antwort (Eingabe 150), Serien steigern den Multiplikator bis ×3, Fehler kosten 50. Auf dem Gipfel gibt es einen Bonus.</li>
-      <li class="q">Unterwegs triffst du zwei zufällige Gestalten mit Schweizer Fragen – Belohnung: Extraleben, Seil-Joker, Abkürzungen, Punkte. Eine dritte wartet nur ganz unten in Visp. In der Solvayhütte lädt Sepp zum Raclette.</li>
+      <li class="q">Unterwegs triffst du zwei zufällige Gestalten mit Schweizer Fragen – Belohnung: Extraleben, Seil-Joker, Abkürzungen, Punkte. Eine dritte wartet nur ganz unten in Visp. In der Hörnlihütte lädt Sepp zum Raclette.</li>
     </ul>
     <div class="meta"><span id="best"></span><button class="chip mini" id="soundBtn" aria-pressed="true">TON AN</button></div>
   </section>
@@ -328,7 +328,7 @@ sub,sup{font-size:.7em;line-height:0}
   </section>
 
   <section class="card notch quest" id="miniCard" hidden>
-    <div class="eyebrow"><span>Raclette bei Sepp · Solvayhütte</span><span id="miniTime">0:45</span></div>
+    <div class="eyebrow"><span>Raclette bei Sepp · Hörnlihütte</span><span id="miniTime">0:45</span></div>
     <div class="cheese" aria-hidden="true"><i id="miniBar"></i></div>
     <div class="minihead"><span><b id="miniPts">0</b> Punkte · <span id="miniPortions">0</span> <span id="miniPortWord">Portionen</span></span><span class="combo" id="miniCombo">CHÄS ×1</span></div>
     <div id="miniPlay"><h2 class="qtext" id="miniQ"></h2><div class="opts" id="miniOpts"></div></div>
@@ -341,7 +341,7 @@ sub,sup{font-size:.7em;line-height:0}
   </section>
 
   <section class="card notch quest" id="tipsyCard" hidden>
-    <div class="eyebrow"><span>Solvayhütte · Sepps Fendant</span></div>
+    <div class="eyebrow"><span>Hörnlihütte · Sepps Fendant</span></div>
     <h2 class="qtext">Hicks! Der Fendant war stärker als gedacht.</h2>
     <div class="expl" id="tipsyText"></div>
     <div class="row"><button class="btn" id="tipsyBtn">WEITERKLETTERN ▲</button></div>
@@ -542,7 +542,7 @@ const NPCS = {
   chamois: { name: "Gämse", spr: "chamois", n: 1, reward: "skip1", say: "Eine Gämse springt vorbei. «Ich kenne eine Abkürzung – beantworte mir eine Frage.»" },
   vulture: { name: "Bartgeier", spr: "vulture", n: 2, reward: "skip2", say: "Ein Bartgeier landet auf dem Grat. «Zwei richtige Antworten, und ich trage dich ein Stück hinauf.»" },
   alphorn: { name: "Alphornbläser", spr: "alphorn", n: 2, reward: "points", say: "Ein Alphornbläser macht Pause. «Zwei Fragen – und ich blase dir ein Ständchen.»" },
-  sepp: { name: "Sepp", spr: "sepp", mini: true, say: "«Hoi! Ich bi dr Sepp. Chum ine i d'Solvayhütte, ds Raclette isch parat – aber bi mir wird bim Ässe Chemie gfragt!»" }
+  sepp: { name: "Sepp", spr: "sepp", mini: true, say: "«Hoi! Ich bi dr Sepp. Chum ine i d'Hörnlihütte, ds Raclette isch parat – aber bi mir wird bim Ässe Chemie gfragt!»" }
 };
 const REWARD_TXT = {
   life: "Belohnung: +1 Leben (ein Fehler mehr erlaubt)",
@@ -556,7 +556,8 @@ const REWARD_TXT = {
 };
 const RISK_TXT = { butt: "Risiko: falsche Antwort = 1 Etappe zurück (zählt nicht als Fehler)", helmet: "Risiko: falsche Antwort = dein Helm ist weg (Steinschlag trifft dich härter)" };
 const NPC_POOL = ["marmot", "mammoth", "ibex", "team", "guide", "chough", "dog", "cow", "chamois", "vulture", "alphorn"];
-const ZONE_WPS = [[Z + 1, Z + 2, HUT], [11, 12, 13, 14, 15, 16], [22, 23, 24, 25, 26, 27]];
+const ZONE_WPS = [[Z + 1, Z + 2], // Hörnlihütte gehört Sepp
+  [11, 12, 13, 14, 15, 16], [22, 23, 24, 25, 26, 27]];
 function planEncounters() {
   const last = store.get("lastNpcs", []);
   let pool = shuffle(NPC_POOL.filter(k => !last.includes(k)));
@@ -564,11 +565,11 @@ function planEncounters() {
   const zones = shuffle([0, 1, 2]).slice(0, 2).sort();
   const enc = zones.map((z, i) => {
     const wps = ZONE_WPS[z], wp = wps[Math.floor(Math.random() * wps.length)];
-    return { wp, id: wp === HUT && Math.random() < 0.5 ? "warden" : pool[i], done: false, gone: false };
+    return { wp, id: pool[i], done: false, gone: false };
   });
   state.vispPool = pool.slice(2);
   store.set("lastNpcs", enc.map(e => e.id));
-  enc.push({ wp: SOLVAY, id: "sepp", done: false, gone: false });
+  enc.push({ wp: HUT, id: "sepp", done: false, gone: false });
   return enc;
 }
 
@@ -1757,7 +1758,7 @@ function leaveHut(tipsy) {
   enqueue(async () => { await wait(700); await stagger(to); }).then(() => {
     if (my !== gid) return;
     renderHud();
-    $("tipsyText").innerHTML = `<p style="margin:0">Du hast bei Sepp ein Schlückli Fendant zum Raclette angenommen. Beim Hinaustreten aus der Solvayhütte torkelst du, verlierst auf dem Grat das Gleichgewicht und rutschst <span class="hl">eine Etappe ab</span> – zurück von «${esc(ROUTE[from].n)}» auf «${esc(ROUTE[to].n)}». Das zählt nicht als Fehler, aber die Etappe musst du nochmals klettern.</p>`;
+    $("tipsyText").innerHTML = `<p style="margin:0">Du hast bei Sepp ein Schlückli Fendant zum Raclette angenommen. Beim Hinaustreten aus der Hörnlihütte torkelst du, verlierst auf dem Weg das Gleichgewicht und rutschst <span class="hl">eine Etappe ab</span> – zurück von «${esc(ROUTE[from].n)}» auf «${esc(ROUTE[to].n)}». Das zählt nicht als Fehler, aber die Etappe musst du nochmals klettern.</p>`;
     show("tipsy"); $("tipsyBtn").focus({ preventScroll: true });
   });
 }
