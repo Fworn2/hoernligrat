@@ -58,6 +58,7 @@ button{cursor:pointer}
 .seg.cur{box-shadow:inset 0 0 0 2px var(--cyan)}
 .prog .lbl{color:#24405e;font-size:13px;text-shadow:0 1px 0 rgba(255,255,255,.5)}
 .inv{font-size:15px;color:var(--gold)}
+body.fly #qCard{max-height:min(55vh,600px)} /* Höhenflug: mehr Himmel über dem Antwortkasten */
 .hud.fly .prog .lbl{background:rgba(14,26,43,.85);color:var(--ink);padding:1px 7px;text-shadow:none}
 @media (max-width:560px){.hud.fly .prog .lbl{letter-spacing:.06em;font-size:12px;white-space:nowrap;max-width:34vw;overflow:hidden;text-overflow:ellipsis}.hud.fly .panel .big{font-size:18px}}
 .panel.err .big{font-size:0;line-height:0;padding:6px 0 5px}
@@ -859,7 +860,7 @@ function frame(now) {
     const top = helmetObj.glacier && onIce ? glTop(helmetObj.x) : gY(helmetObj.x);
     if (helmetObj.vy > 0 && helmetObj.y >= top && (!helmetObj.glacier || onIce)) { helmetObj.y = top; helmetObj.rest = true; helmetObj.rot = 0; }
   }
-  cam.fy = goatScreenFraction();
+  { const f = goatScreenFraction(); cam.fy = GAME === "schaf" ? cam.fy + (f - cam.fy) * (1 - Math.pow(0.01, dt)) : f; } // Höhenflug: weich nachführen
   let tx, ty;
   if (camMode === "attract") { tx = -110 + Math.sin(now / 9000) * (RM ? 0 : 20); ty = ALT_Y(3550) + Math.sin(now / 7000) * (RM ? 0 : 25); }
   else if (cer) { tx = -45; ty = gY(-30) - 18; }
@@ -881,7 +882,9 @@ function goatScreenFraction() {
   if (!hud.hidden) top = hud.getBoundingClientRect().bottom; else if (!title.hidden) top = title.getBoundingClientRect().bottom;
   const card = [$("startCard"), $("qCard"), $("endCard"), $("meetCard"), $("miniCard")].find(c => !c.hidden);
   const bottom = card ? card.getBoundingClientRect().top : ch;
-  if (GAME === "schaf" && !atStart()) { // Schaf auf 2/3 der Höhe bzw. knapp über der Karte – viel Himmel darüber, Ballone unter dem HUD
+  if (GAME === "schaf" && !atStart() && sheep.p >= 0.8 && !sheep.down) // im Flug: Schaf samt Objekt seiner Station gut sichtbar zwischen HUD und Karte
+    return clamp((top + (bottom - top) * 0.6) / ch, 0.18, 0.85);
+  if (GAME === "schaf" && !atStart()) { // am Boden: Schaf auf 2/3 der Höhe bzw. knapp über der Karte – viel Himmel darüber, Ballone unter dem HUD
     let want = Math.max(Math.min(bottom - 6, ch * 2 / 3), top + 64 * S);
     if (want > bottom - 6) want = Math.max(bottom - 6, top + 30);
     return clamp(want / ch, 0.18, 0.85);
@@ -1209,6 +1212,23 @@ const STN = [ // n: Name, s: Kurzname (Bestenliste/Auswertung), alt: Höhe bzw. 
 ];
 const LAST = STN.length - 1;
 const BEYOND = { n: "Jenseits des Horizonts", s: "Jenseits", alt: null };
+// Sichtbarer Abstand zweier Stationen wächst mit der echten Entfernung (Logarithmus des Höhenverhältnisses);
+// ab dem Mond mindestens 2 Abschnitte, höchstens 4. Punkte je Station bleiben STEP – nur der Weg am Bildschirm wird länger.
+const MOON_I = STN.findIndex(st => st.d === "moon");
+const GAPF = STN.map((st, i) => (i === 0 ? 0 : clamp(0.8 + 1.4 * Math.log10(st.alt / STN[i - 1].alt), i >= MOON_I ? 2 : 1, 4)));
+const WYS = [0]; for (let i = 1; i <= LAST; i++) WYS[i] = WYS[i - 1] + GAPF[i] * SP;
+const GAP_BEYOND = 2.5 * SP;
+function WY(p) { // Station (auch gebrochen) → Weltkoordinate in Szenenpunkten über der Alp
+  if (p <= 0) return p * SP;
+  if (p >= LAST) return WYS[LAST] + (p - LAST) * GAP_BEYOND;
+  const i = Math.floor(p); return WYS[i] + (p - i) * GAPF[i + 1] * SP;
+}
+function PW(w) { // Umkehrung von WY
+  if (w <= 0) return w / SP;
+  if (w >= WYS[LAST]) return LAST + (w - WYS[LAST]) / GAP_BEYOND;
+  let i = 0; while (WYS[i + 1] <= w) i++;
+  return i + (w - WYS[i]) / (GAPF[i + 1] * SP);
+}
 const stnAt = i => (i > LAST ? BEYOND : STN[Math.max(0, i)]);
 function altAt(p) {
   if (p <= 0) return STN[0].alt;
@@ -1268,9 +1288,9 @@ const SHEEP_F = makeSprite([ // zappelnde Beine (Absturz)
   "wWWWWWWWWWWWWWWWWKKK....", "wWWWWWWWWWWWWWWWWw......", ".wWWWWWWWWWWWWWWw.......", "..wwWWWWWWWWWWww........",
   "..wW....wW..wW....wW....", "..KK....KK..KK....KK....", ".wW......wW.wW......wW..", ".KK......KK.KK......KK.."
 ], SHEEP_PAL);
-const SHEEP0 = { p: 0, dip: 0, rot: 0, dx: 0, down: false, balloons: 3, flail: false, falling: false, squash: 0, hop: 0 };
+const SHEEP0 = { p: 0, dip: 0, rot: 0, dx: 0, down: false, balloons: 3, flail: false, falling: false, squash: 0, hop: 0, chute: 0, chuteDrop: 0 };
 const sheep = Object.assign({ bpos: [] }, SHEEP0);
-let camP = 0, skyParts = [], lastHudAlt = "", startPose = { dx: 0, fy: null };
+let camW = 0, skyParts = [], lastHudAlt = "", startPose = { dx: 0, fy: null };
 const HAYX = () => Math.round(W / 2); // Heuhaufen genau unter der Flugbahn
 const HAY_H = 20, HAY_W = 27;
 const atStart = () => state.phase === "start" || state.phase === "name";
@@ -1298,8 +1318,8 @@ async function walkCenter() { // vom Startbild zur Mitte: gehen (Wiese) oder hin
 
 function skyTick(dt) {
   // Startbild: Himmel 2/3, Wiese 1/3 (Boden auf 2/3 der Bildhöhe); im Spiel folgt die Kamera dem Schaf
-  const target = atStart() ? (H * 2 / 3 - H * cam.fy) / SP : sheep.p + sheep.dip;
-  if (state.phase === "dying") camP = target; else camP += (target - camP) * (1 - Math.pow(0.002, dt));
+  const target = atStart() ? H * 2 / 3 - H * cam.fy : WY(sheep.p + sheep.dip);
+  if (state.phase === "dying") camW = target; else camW += (target - camW) * (1 - Math.pow(0.002, dt));
   for (const pt of skyParts) { pt.vy -= pt.g * dt; pt.x += pt.vx * dt; pt.wy += pt.vy * dt; pt.life -= dt; if (pt.floor && pt.wy < 0) { pt.wy = 0; pt.vy = 0; pt.vx *= 0.5; } }
   skyParts = skyParts.filter(pt => pt.life > 0);
   if (!$("hud").hidden) {
@@ -1362,19 +1382,16 @@ const OBJ = {
   },
   mhorn() {},
   clouds(x, y, now) { for (let k = 0; k < 7; k++) { const cx = ((k * W / 5 + now / 1000 * 3 * (1 + k % 3)) % (W + 60)) - 30; cumulus(cx, y + (k % 3 - 1) * 9, 18 + (k * 7) % 16); } },
-  icbm(x, y, now) { // zwei Raketen auf ballistischen Bögen (antriebslose Mittelphase, daher ohne Flamme), gepunktete Bahn
-    for (let k = 0; k < 2; k++) {
-      const dir = k ? -1 : 1, T = 6500 + k * 2300, t = ((now + k * 3100) % T) / T, span = W + 80, x0 = dir > 0 ? -40 : W + 40, arc = 22, base = y + 8 + k * 14;
-      const bx = tt => x0 + dir * tt * span, by = tt => base - arc * Math.sin(Math.PI * tt);
-      lctx.globalAlpha = 0.6; for (let j = 0; j <= 80; j += 2) { const tt = j / 80; if (tt > t) break; R(bx(tt), by(tt), 1, 1, "#ffc2b0"); } lctx.globalAlpha = 1;
-      const ang = Math.atan2(-arc * Math.PI * Math.cos(Math.PI * t), dir * span);
+  icbm(x, y, now) { // vier Raketen mit Länderflagge auf ballistischen Bögen (antriebslose Mittelphase, daher ohne Flamme)
+    lctx.imageSmoothingEnabled = false;
+    ROCKETS.forEach((r, k) => {
+      const t = ((now + r.ph) % r.T) / r.T, span = W + 90, x0 = r.dir > 0 ? -45 : W + 45, arc = 20, base = y - 6 + k * 13;
+      const bx = tt => x0 + r.dir * tt * span, by = tt => base - arc * Math.sin(Math.PI * tt);
+      lctx.globalAlpha = 0.55; for (let j = 0; j <= 90; j += 2) { const tt = j / 90; if (tt > t) break; R(bx(tt), by(tt), 1, 1, "#ffc2b0"); } lctx.globalAlpha = 1;
+      const ang = Math.atan2(-arc * Math.PI * Math.cos(Math.PI * t), r.dir * span);
       lctx.save(); lctx.translate(Math.round(bx(t)), Math.round(by(t))); lctx.rotate(Math.round(ang / (Math.PI / 8)) * (Math.PI / 8));
-      lctx.fillStyle = "#ececec"; lctx.fillRect(-10, -2, 16, 4); lctx.fillStyle = "#cfd6dd"; lctx.fillRect(-10, 1, 16, 1);
-      lctx.fillStyle = "#d8dde3"; lctx.fillRect(6, -2, 2, 4); lctx.fillRect(8, -1, 2, 2); lctx.fillStyle = "#5f5c66"; lctx.fillRect(10, -1, 1, 2);
-      lctx.fillStyle = "#2c4a8b"; lctx.fillRect(-3, -2, 1, 4); lctx.fillRect(-1, -2, 1, 4);
-      lctx.fillStyle = "#6b6873"; lctx.fillRect(-11, -4, 3, 2); lctx.fillRect(-11, 2, 3, 2); lctx.fillRect(-12, -1, 1, 2);
-      lctx.restore();
-    }
+      lctx.drawImage(r.spr, -(r.spr.width >> 1), -(r.spr.height >> 1)); lctx.restore();
+    });
   },
   plane(x, y, now) {
     const px = ((now / 45) % (W + 120)) - 60;
@@ -1491,6 +1508,28 @@ const OBJ = {
   },
   edge(x, y, now) { for (let xx = 0; xx < W; xx++) { lctx.globalAlpha = 0.15; R(xx, y - 14, 1, 14, "#cfe0ff"); lctx.globalAlpha = 0.9; R(xx, y + Math.round(Math.sin(xx / 5 + now / 400) * 2), 1, 1, "#ffffff"); } lctx.globalAlpha = 1; }
 };
+const FLAGS = { // 8×6 Pixel
+  us: { rows: ["BBBBRRRR", "BwBwWWWW", "BBBBRRRR", "WWWWWWWW", "RRRRRRRR", "WWWWWWWW"], pal: { B: "#2b3f8c", w: "#ffffff", W: "#f4f4f4", R: "#c8102e" } },
+  cn: { rows: ["RRRRYRRR", "RYYRRYRR", "RYYRRRRR", "RRRRRYRR", "RRRRYRRR", "RRRRRRRR"], pal: { R: "#de2910", Y: "#ffde00" } },
+  kp: { rows: ["BBBBBBBB", "WWWWWWWW", "RwwRRRRR", "RwwRRRRR", "WWWWWWWW", "BBBBBBBB"], pal: { B: "#024fa2", W: "#f4f4f4", w: "#ffffff", R: "#ed1c27" } },
+  ru: { rows: ["WWWWWWWW", "WWWWWWWW", "BBBBBBBB", "BBBBBBBB", "RRRRRRRR", "RRRRRRRR"], pal: { W: "#f4f4f4", B: "#0039a6", R: "#d52b1e" } }
+};
+function rocketSprite(f, dir) { // Rakete 32×12 mit gerahmter Flagge auf dem Rumpf, Spitze in Flugrichtung
+  const c = document.createElement("canvas"); c.width = 32; c.height = 12; const x = c.getContext("2d");
+  const F = (a, b, w, h, col) => { x.fillStyle = col; x.fillRect(a, b, w, h); };
+  F(1, 0, 5, 3, "#6b6873"); F(1, 9, 5, 3, "#6b6873"); F(2, 4, 2, 4, "#3a3d44");
+  F(4, 2, 21, 8, "#ececec"); F(4, 9, 21, 1, "#c3c8ce"); F(4, 2, 21, 1, "#ffffff");
+  F(25, 2, 2, 8, "#d8dde3"); F(27, 3, 2, 6, "#d8dde3"); F(29, 4, 1, 4, "#c3c8ce"); F(30, 5, 1, 2, "#5f5c66");
+  const fl = FLAGS[f], fx = dir > 0 ? 12 : 11; // Flagge 8×6 mit dunklem Rahmen
+  const flag = (ox, ctx2) => { ctx2.fillStyle = "#2a2d34"; ctx2.fillRect(ox - 1, 2, 10, 8); fl.rows.forEach((r, j) => [...r].forEach((ch, i) => { ctx2.fillStyle = fl.pal[ch]; ctx2.fillRect(ox + i, 3 + j, 1, 1); })); };
+  if (dir > 0) { flag(fx, x); return c; }
+  const m = document.createElement("canvas"); m.width = 32; m.height = 12; const mx = m.getContext("2d");
+  mx.translate(32, 0); mx.scale(-1, 1); mx.drawImage(c, 0, 0); mx.setTransform(1, 0, 0, 1, 0, 0); // fliegt nach links; Flagge nicht gespiegelt
+  flag(32 - 12 - 8, mx);
+  return m;
+}
+const ROCKETS = [["us", 1, 7000, 0], ["ru", -1, 8200, 2500], ["cn", 1, 7600, 5200], ["kp", -1, 6900, 1300]]
+  .map(([f, dir, T, ph]) => ({ f, dir, T, ph, spr: rocketSprite(f, dir) }));
 const WIDE = new Set(["clouds", "karman", "aurora", "vanallen", "helio", "oort", "ly", "galcenter", "cmb", "edge", "asteroids", "meteors"]);
 function stnX(i) { const off = Math.min(W * 0.3, 90); return Math.round(W / 2 + (i % 2 ? 1 : -1) * off); }
 function drawMhorn(mx, top, base) { // Matterhorn: Gipfel auf Höhe der Station 2, Fuss auf der Alp
@@ -1558,21 +1597,21 @@ function drawChalet(x, g) { // Walliser Holzhaus: gemauerter Sockel, sonnengebr�
 function drawWall(x0, x1, g) { // Trockenmauer
   for (let x = Math.round(x0); x < x1; x += 3) { const h = hash(x, 451); R(x, g - 3, 3, 3, h < 0.33 ? "#a39a8c" : h < 0.66 ? "#8d8279" : "#b3a696"); if (h < 0.5) R(x + 1, g - 4, 2, 1, "#a39a8c"); }
 }
-const FLAG_VS = (() => { // Walliser Fahne 25×26: gespalten von Weiss und Rot, 13 fünfzackige Sterne pfahlweise 4-5-4 in gewechselten Farben
-  const w = 25, h = 26, c = document.createElement("canvas"); c.width = w; c.height = h;
-  const x = c.getContext("2d"), red = px => px >= 13;
+const FLAG_VS = (() => { // Walliser Fahne 13×16: gespalten von Weiss und Rot, 13 Sterne pfahlweise 4-5-4 in gewechselten Farben
+  const w = 13, h = 16, c = document.createElement("canvas"); c.width = w; c.height = h;
+  const x = c.getContext("2d"), red = px => px >= 7;
   for (let i = 0; i < w; i++) { x.fillStyle = red(i) ? "#e3001b" : "#f4f4f4"; x.fillRect(i, 0, 1, h); }
-  const STAR = ["..X..", "XXXXX", ".XXX.", ".X.X."];
+  const STAR = [".X.", "XXX", "X.X"];
   const put = (sx, sy) => STAR.forEach((r, j) => [...r].forEach((ch, i) => { if (ch === "X") { x.fillStyle = red(sx + i) ? "#f4f4f4" : "#e3001b"; x.fillRect(sx + i, sy + j, 1, 1); } }));
-  for (const sy of [4, 9, 14, 19]) { put(2, sy); put(18, sy); }
-  for (const sy of [1, 6, 11, 16, 21]) put(10, sy);
+  for (const sy of [2, 5, 8, 11]) { put(1, sy); put(9, sy); }
+  for (const sy of [0, 3, 6, 9, 12]) put(5, sy);
   return c;
 })();
 function drawFlagVS(x, g, now) { // Fahne weht: Spalten wellenförmig versetzt
-  x = Math.round(x); const top = g - 46;
-  R(x, top - 1, 1, 47, "#b3b8bf"); R(x, top - 2, 1, 1, "#c9a14a");
+  x = Math.round(x); const top = g - 30;
+  R(x, top - 1, 1, 31, "#b3b8bf"); R(x, top - 2, 1, 1, "#c9a14a");
   for (let c = 0; c < FLAG_VS.width; c++) {
-    const off = Math.round(Math.sin(c / 4 - now / 260) * 1.4 * (c / FLAG_VS.width));
+    const off = Math.round(Math.sin(c / 3 - now / 260) * (c / FLAG_VS.width));
     lctx.drawImage(FLAG_VS, c, 0, 1, FLAG_VS.height, x + 1 + c, top + off, 1, FLAG_VS.height);
   }
 }
@@ -1592,11 +1631,11 @@ function drawFork(x, g) { // Heugabel lehnt links am Haufen (vor hellem Hintergr
 }
 function drawSky(now) {
   const L = lctx, sh = cam.shake > 0.3 ? (Math.random() - 0.5) * cam.shake : 0;
-  const baseY = Math.round(H * cam.fy + sh), cp = camP;
-  const Y = v => Math.round(baseY - (v - cp) * SP), vAt = sy => cp + (baseY - sy) / SP;
+  const baseY = Math.round(H * cam.fy + sh), cw = camW;
+  const Y = v => Math.round(baseY - (WY(v) - cw)), vAt = sy => PW(cw + baseY - sy);
   for (let sy = 0; sy < H; sy++) { L.fillStyle = skyCol(vAt(sy)); L.fillRect(0, sy, W, 1); }
   // Sterne mit Parallaxe; sie erscheinen ab etwa der Concorde-Höhe
-  const sOff = cp * SP * 0.35, CELL = 7;
+  const sOff = cw * 0.35, CELL = 7;
   if (vAt(0) > 6) {
     const r0 = Math.floor((sOff - (H - baseY)) / CELL) - 1, r1 = Math.ceil((sOff + baseY) / CELL) + 1;
     for (let r = r0; r <= r1; r++) for (let c = 0; c * CELL < W; c++) {
@@ -1609,7 +1648,7 @@ function drawSky(now) {
   }
   // Boden: ferne Ketten, Matterhorn, Alp mit Stadel, Heuhaufen und grasenden Schafen
   const g0 = Y(0);
-  if (g0 - 2.2 * SP < H) {
+  if (g0 - WY(2.2) < H) {
     for (let sx = 0; sx < W; sx++) {
       const p1 = sx + 40, t1 = Math.round(g0 - (34 + 14 * Math.sin(p1 / 23) + 8 * Math.sin(p1 / 9 + 2) + 3 * Math.sin(p1 / 4.3)));
       if (t1 < H) { R(sx, t1, 1, g0 - t1, "#a9c3d8"); R(sx, t1, 1, 3, "#e9f2f8"); }
@@ -1629,7 +1668,7 @@ function drawSky(now) {
     drawStadel(W * 0.12, g0); drawLarch(W * 0.19, g0, 15);
     drawWall(W * 0.27, W * 0.42, g0); drawFlagVS(W * 0.32, g0, now);
     drawWall(W * 0.58, W * 0.7, g0);
-    { const cw = NPC_SPR.cow.c; L.drawImage(cw, Math.round(W * 0.64 - cw.width / 2), g0 - cw.height + 1); } // Eringer Kuh
+    { const cw = NPC_SPR.cow.c; L.drawImage(cw, Math.round(W * 0.67 - cw.width / 2), g0 - cw.height + 1); } // Eringer Kuh
     drawChalet(W * 0.86, g0); drawLarch(W * 0.965, g0, 22);
     for (const [fx, fl] of [[W * 0.24, true], [W * 0.76, false]]) { L.save(); L.translate(Math.round(fx), g0 - SHEEP.height + 1); if (fl) { L.scale(-1, 1); L.drawImage(SHEEP, -SHEEP.width, 0); } else L.drawImage(SHEEP, 0, 0); L.restore(); }
     drawFork(HAYX() - HAY_W + 6, g0);
@@ -1648,16 +1687,32 @@ function drawSky(now) {
     if (i > LAST) { dots(stnX(i), y, 10, 5, 40, ["#cfe0ff", "#ffffff", "#ffc2d3"], 200 + i, 0.6); continue; }
     const f = OBJ[STN[i].d]; if (f) f(stnX(i), y, now);
   }
-  for (const pt of skyParts) R(pt.x, baseY - (pt.wy - cp * SP), 1, 1, pt.c);
+  for (const pt of skyParts) R(pt.x, baseY - (pt.wy - cw), 1, 1, pt.c);
   // Schaf mit Ballonen
   const calm = !sheep.down && !atStart() && state.phase !== "dying";
   const pose = atStart() ? calcStartPose() : null, floatStart = pose && pose.fy != null;
-  const sx = Math.round(W / 2 + (pose ? pose.dx : sheep.dx) + (calm || floatStart ? Math.sin(now / 1100) * 2 : 0));
+  const sx = Math.round(W / 2 + (pose ? pose.dx : sheep.dx) + (calm || floatStart ? Math.sin(now / 1100) * 2 : 0) + (sheep.chute > 0 && !sheep.down ? Math.sin(now / 650) * 3 : 0));
   const hayTop = g0 - Math.round(HAY_H * (1 - 0.4 * sheep.squash));
   let sy = sheep.down === "buried" ? hayTop + 13 : sheep.down === "sit" ? hayTop + 2
     : floatStart ? Math.round(pose.fy - Math.sin(now / 520) * 1.5)
     : Math.round(Y(sheep.p + sheep.dip) - (calm ? Math.sin(now / 520) * 1.5 : 0));
   sy -= Math.round(sheep.hop);
+  const sway = sheep.chute > 0 && !sheep.down ? Math.sin(now / 650) * 3 : 0;
+  if (sheep.chute > 0) { // rot-weisser Fallschirm; nach der Landung fällt er neben dem Heuhaufen in sich zusammen
+    const d = sheep.chuteDrop, o = sheep.chute;
+    const e = d * d * (3 - 2 * d); // Schirm gleitet seitlich auf die Wiese neben dem Heuhaufen und liegt dort zerknittert
+    const cx = Math.round(lerp(sx + sway * 0.6, HAYX() + HAY_W - 3, e)), cy = Math.round(lerp(sy - 38, g0 - 1, e));
+    const hw = Math.round(lerp(17 * o, 13, e)), hh = Math.max(2, Math.round(lerp(11 * o, 3, e)));
+    if (d < 0.95) for (const f of [-1, -0.45, 0.45, 1]) {
+      const ex = cx + Math.round(f * hw), ey = cy, ax = sx - 2, ay = sy - 13, n = Math.max(Math.abs(ex - ax), Math.abs(ey - ay), 1);
+      L.globalAlpha = 1 - d; for (let j = 0; j <= n; j++) R(lerp(ex, ax, j / n), lerp(ey, ay, j / n), 1, 1, "#d8dde3"); L.globalAlpha = 1;
+    }
+    for (let r = 0; r < hh; r++) {
+      const w = Math.round(hw * Math.sqrt(1 - Math.pow(1 - (r + 1) / hh, 2)));
+      for (let xx = -w; xx <= w; xx++) R(cx + xx, cy - hh + r, 1, 1, Math.floor((xx + hw + 40) / 5) % 2 ? "#f4f4f4" : "#e3001b");
+    }
+    R(cx - hw, cy, 2 * hw + 1, 1, "#a50013");
+  }
   if (sheep.falling) { // Fahrtwind-Striche über dem fallenden Schaf
     L.globalAlpha = 0.5;
     for (let k = 0; k < 8; k++) { const off = (now / 14 + k * 13) % 44; R(sx - 11 + ((k * 7) % 23), sy - 24 - off, 1, 7 + (k % 3) * 3, "#ffffff"); }
@@ -1669,7 +1724,7 @@ function drawSky(now) {
     const n = Math.max(Math.abs(bx - ax), Math.abs(by + 5 - ay));
     for (let j = 0; j <= n; j++) R(lerp(ax, bx, j / n), lerp(ay, by + 5, j / n), 1, 1, "#e8e8e8");
     L.drawImage(BAL[k], bx - (BAL[k].width >> 1), by - 6);
-    sheep.bpos[k] = { x: bx, wy: (baseY - by) + cp * SP };
+    sheep.bpos[k] = { x: bx, wy: (baseY - by) + cw };
   }
   L.save(); L.translate(sx, sy - (SHEEP.height >> 1) + 1);
   const rot = sheep.down === "buried" ? Math.PI : sheep.down === "sit" ? 0 : sheep.rot; if (rot) L.rotate(Math.round(rot / (Math.PI / 2)) * (Math.PI / 2));
@@ -1678,7 +1733,7 @@ function drawSky(now) {
   if (sheep.down === "buried") drawHay(HAYX(), g0, sheep.squash, hayTop + 4); // Kopf voran im Heu, nur die Beine zappeln heraus
   if (sheep.down === "sit") {
     R(sx + 6, sy - 18, 4, 1, "#fff1a8"); R(sx + 8, sy - 19, 1, 1, "#e2b84a"); // Strohhalm auf dem Kopf
-    for (let k = 0; k < 3; k++) { const a = now / 260 + k * 2.1; R(sx + 7 + Math.cos(a) * 7, sy - 21 + Math.sin(a) * 2, 1, 1, "#ffe27a"); }
+    if (!sheep.chute) for (let k = 0; k < 3; k++) { const a = now / 260 + k * 2.1; R(sx + 7 + Math.cos(a) * 7, sy - 21 + Math.sin(a) * 2, 1, 1, "#ffe27a"); }
   }
   // auf den Bildschirm, dann Beschriftungen in voller Auflösung
   ctx.imageSmoothingEnabled = false;
@@ -1692,7 +1747,7 @@ function drawSky(now) {
     let lx, ly;
     if (i === 0) { lx = W * 0.12; ly = Y(0) - 32; }
     else if (d === "mhorn") { lx = W * 0.78; ly = Y(2) - 6; }
-    else { lx = WIDE.has(d) ? W * 0.5 + (i % 2 ? 1 : -1) * Math.min(W * 0.3, 90) : stnX(i); ly = Y(i) - ({ icbm: 30, moon: 34, sun: 38, jupiter: 30, saturn: 20, galcenter: 22, cmb: 32, aurora: 34, clouds: 16, vanallen: 16, helio: 8, edge: 22 }[d] || 15); }
+    else { lx = WIDE.has(d) ? W * 0.5 + (i % 2 ? 1 : -1) * Math.min(W * 0.3, 90) : stnX(i); ly = Y(i) - ({ icbm: 34, moon: 34, sun: 38, jupiter: 30, saturn: 20, galcenter: 22, cmb: 32, aurora: 34, clouds: 16, vanallen: 16, helio: 8, edge: 22 }[d] || 15); }
     const label = `${st.n}  ${stnAlt(st)}`, tw = ctx.measureText(label).width;
     const x = clamp(lx * S - tw / 2, 6, innerWidth - tw - 10), y = ly * S;
     if (y < -20 || y > innerHeight + 20) continue;
@@ -1709,14 +1764,21 @@ function drawSky(now) {
     ctx.fillStyle = b.color; ctx.fillText(b.text, bx, by - age * 46); ctx.globalAlpha = 1;
   }
 }
-async function flyTo(to) {
-  const from = sheep.p, d = Math.abs(to - from);
-  await tween(clamp(700 + d * 420, 900, 3000), p => { const e = p < 0.5 ? 2 * p * p : 1 - Math.pow(-2 * p + 2, 2) / 2; sheep.p = lerp(from, to, e); });
+async function flyTo(to) { // steigt Station für Station und hält an jeder überflogenen kurz an, damit man Objekt und Namen sieht
+  const stops = [];
+  for (let i = Math.floor(sheep.p + 1e-6) + 1; i <= Math.floor(to + 1e-6); i++) stops.push(i);
+  if (!stops.length || Math.abs(stops[stops.length - 1] - to) > 1e-6) stops.push(to);
+  for (const st of stops) {
+    const a = WY(sheep.p), b = WY(st);
+    await tween(clamp(450 + Math.abs(b - a) / SP * 380, 550, 2600), p => { const e = p < 0.5 ? 2 * p * p : 1 - Math.pow(-2 * p + 2, 2) / 2; sheep.p = PW(lerp(a, b, e)); });
+    sheep.p = st;
+    if (st !== to) await wait(1200);
+  }
   sheep.p = to;
 }
 async function popBalloon(final) {
   const k = sheep.balloons - 1; if (k < 0) return;
-  const b = sheep.bpos[k] || { x: W / 2, wy: sheep.p * SP + 40 };
+  const b = sheep.bpos[k] || { x: W / 2, wy: WY(sheep.p) + 40 };
   sheep.balloons--;
   sfx("pop"); flash(0.2); bubble("PENG!", "#ff6b6b", true);
   for (let i = 0; i < 20; i++) skyParts.push({ x: b.x, wy: b.wy, vx: (Math.random() - 0.5) * 90, vy: (Math.random() - 0.3) * 80, life: 0.5 + Math.random() * 0.5, c: BAL_COL[k], g: 120 });
@@ -1724,32 +1786,40 @@ async function popBalloon(final) {
   await tween(900, p => { sheep.dip = -0.35 * Math.sin(p * Math.PI); });
   sheep.dip = 0;
 }
-async function flyFall() { // dritter Ballon geplatzt: Schrecksekunde, kopfüber durch alle Stationen, senkrecht ins Heu
+async function flyFall() { // dritter Ballon geplatzt: Schrecksekunde, freier Fall, Fallschirm, Sinkflug an allen Stationen vorbei ins Heu
   const my = gid;
   state.phase = "dying"; renderHud(); hideCards();
   await animQ; if (my !== gid) return;
   await wait(250);
   await popBalloon(true); if (my !== gid) return;
   bubble("MÄÄH …?", "#ffffff", true);
-  const pTop = HAY_H / SP;
+  const pTop = PW(HAY_H);
   if (sheep.p < pTop + 0.5) { const a = sheep.p; await tween(380, p => { sheep.p = lerp(a, pTop + 0.6, 1 - (1 - p) * (1 - p)); }); } // stand es noch am Boden: kleiner Hüpfer
   else await wait(750); // hängt kurz ohne Ballone in der Luft
   if (my !== gid) return;
-  sheep.rot = Math.PI / 2; await wait(110); sheep.rot = Math.PI; sheep.flail = true; sheep.falling = true;
+  sheep.flail = true; sheep.falling = true; // kurzer freier Fall
   sfx("fall"); bubble("MÄÄÄÄÄH!", "#ffffff", true);
-  const p0 = sheep.p, dx0 = sheep.dx;
-  await tween(clamp(1100 + p0 * 70, 1000, 4600), p => { sheep.p = lerp(p0, pTop, p * p); sheep.dx = lerp(dx0, 0, p); });
+  const w0 = WY(sheep.p), dx0 = sheep.dx, wFree = Math.max(HAY_H + 40, w0 - SP * 0.9);
+  await tween(650, p => { sheep.p = PW(lerp(w0, wFree, p * p)); });
   if (my !== gid) return;
-  Object.assign(sheep, { falling: false, p: 0, dx: 0, rot: 0, down: "buried" });
-  shake(7); flash(0.35); sfx("splat"); bubble("PLUMPS!", "#ffcf6b", true);
-  for (let i = 0; i < 70; i++) skyParts.push({ x: HAYX() + (Math.random() - 0.5) * 34, wy: HAY_H - 2, vx: (Math.random() - 0.5) * 120, vy: 40 + Math.random() * 100, life: 1.4 + Math.random(), c: ["#e2b84a", "#fff1a8", "#c9982f"][i % 3], g: 150, floor: true });
-  await tween(700, p => { sheep.squash = Math.sin(p * Math.PI) * (1 - p * 0.5); });
+  sheep.flail = false; sheep.falling = false; // Fallschirm geht auf
+  sfx("chute"); bubble("PLOPP!", "#ffffff", true);
+  await tween(380, p => { sheep.chute = p; sheep.p = PW(wFree + Math.sin(p * Math.PI) * 6); });
+  sheep.chute = 1;
+  // Sinkflug: gleich viel Zeit je Station, damit man alles Überflogene noch einmal sieht (zügig, aber lesbar)
+  const pFree = PW(wFree), pEnd = PW(HAY_H);
+  await tween(clamp(1800 + (pFree - pEnd) * 340, 2200, 14000), p => {
+    const e = p < 0.5 ? p * (0.6 + 0.8 * p) : 1 - (1 - p) * (0.6 + 0.8 * (1 - p)); // sanft an- und auslaufen
+    sheep.p = lerp(pFree, pEnd, e); sheep.dx = lerp(dx0, 0, Math.min(1, p * 4));
+  });
+  if (my !== gid) return;
+  Object.assign(sheep, { p: 0, dx: 0, rot: 0, down: "sit" }); // landet weich auf dem Heuhaufen
+  sfx("step"); bubble("PUH – WEICH GELANDET!", "#ffcf6b", true);
+  for (let i = 0; i < 30; i++) skyParts.push({ x: HAYX() + (Math.random() - 0.5) * 30, wy: HAY_H - 2, vx: (Math.random() - 0.5) * 70, vy: 20 + Math.random() * 50, life: 1 + Math.random(), c: ["#e2b84a", "#fff1a8", "#c9982f"][i % 3], g: 150, floor: true });
+  await tween(380, p => { sheep.squash = Math.sin(p * Math.PI) * 0.35; });
   sheep.squash = 0;
-  await wait(1000); if (my !== gid) return;
-  sheep.flail = false; // klettert heraus und setzt sich benommen oben auf den Haufen
-  await tween(480, p => { sheep.hop = Math.sin(p * Math.PI) * 12; if (p > 0.5) sheep.down = "sit"; });
-  sheep.hop = 0; sheep.down = "sit"; sfx("step");
-  await wait(1400);
+  await tween(800, p => { sheep.chuteDrop = p; }); // Schirm sinkt neben dem Haufen zusammen
+  await wait(1300);
   if (my === gid) showEnd();
 }
 function flyAnswer(ok, q, chosen) {
@@ -1847,6 +1917,7 @@ function sfx(kind) {
       case "quest": tone(784, .06); tone(988, .06, "square", .05, .07); tone(1175, .12, "square", .05, .14); break;
       case "yodel": playJodel(); break;
       case "heli": for (let i = 0; i < 14; i++) noise(0.06, 0.07, i * 0.1, 300); break;
+      case "chute": noise(0.3, 0.14, 0, 1400); tone(260, .25, "triangle", .06, 0, 520); break;
       case "pop": noise(0.12, 0.3, 0, 3000); tone(1400, .08, "square", .05, 0, 300); break;
     }
   } catch (e) {}
@@ -2040,7 +2111,7 @@ const RULES = {
 function setGame(g) {
   if (!GAMES[g] || g === GAME) return;
   GAME = g; store.set("game", g);
-  Object.assign(sheep, SHEEP0); camP = 0; skyParts = []; bubbles = [];
+  Object.assign(sheep, SHEEP0); camW = 0; skyParts = []; bubbles = [];
   renderSettings();
 }
 function renderSettings() {
@@ -2120,7 +2191,7 @@ function localBoard() { // Bestenliste dieses Geräts für das gewählte Fach un
   $("board").innerHTML = boardHtml(list, null, 5);
 }
 function renderHud() {
-  $("segs").hidden = GAME === "schaf"; $("hud").classList.toggle("fly", GAME === "schaf");
+  $("segs").hidden = GAME === "schaf"; $("hud").classList.toggle("fly", GAME === "schaf"); document.body.classList.toggle("fly", GAME === "schaf");
   $("livesLbl").textContent = GAME === "schaf" ? "Ballone" : "Fehler";
   if (GAME === "schaf") {
     const i = Math.floor(state.score / STEP + 1e-9);
@@ -2262,7 +2333,7 @@ function startGame() {
   $("startName").value = nm; store.set("name", nm); state.name = nm;
   stopAnthem(); stopHutMusic(true); cer = null; state.scene = "mountain"; state.mini = null; hutParts = []; hutPops = [];
   Object.assign(state, { regaUses: 0, score: 0, combo: 0, bestCombo: 0, balloons: 3, ropeQ: false, pos: Z, errors: 0, maxErr: 5, ropes: 0, streak: 0, asked: 0, right: 0, wrong: [], deck: shuffle(pool()), swissDeck: shuffle(SWISS), maxPos: Z, enc: GAME === "schaf" ? [] : planEncounters(), quest: null, lastWrong: null, outcome: null, meet: null, anim: null });
-  Object.assign(sheep, SHEEP0, fromStart && GAME === "schaf" ? { dx: startPose.dx, p: startPose.fy != null ? Math.max(0, camP + (H * cam.fy - startPose.fy) / SP) : 0 } : {}); skyParts = [];
+  Object.assign(sheep, SHEEP0, fromStart && GAME === "schaf" ? { dx: startPose.dx, p: startPose.fy != null ? Math.max(0, PW(camW + H * cam.fy - startPose.fy)) : 0 } : {}); skyParts = [];
   Object.assign(goat, { x: ROUTE[Z].x, rot: 0, flip: false, hop: 0, airY: null, dead: null, hidden: false, ride: false, frame: 0, helmet: true });
   flag = false; parts = []; rocks = []; decals = []; bubbles = []; anims = []; animQ = Promise.resolve(); train = null; heli = null; helmetObj = null; boulder = null; deathCrev = null;
   camMode = "follow"; sfx("step");
@@ -2553,9 +2624,9 @@ function showEnd() {
   }
   const t = $("endTitle");
   t.className = "endtitle " + (win ? "win" : "lose");
-  t.textContent = fly ? "ABSTURZ · WEICH IM HEU" : win ? "GIPFEL · 4478 m" : (goat.dead === "crevasse" ? "ABSTURZ IN DIE GLETSCHERSPALTE" : "VON DER STEINLAWINE ERSCHLAGEN");
+  t.textContent = fly ? "ABSTURZ · AM FALLSCHIRM INS HEU" : win ? "GIPFEL · 4478 m" : (goat.dead === "crevasse" ? "ABSTURZ IN DIE GLETSCHERSPALTE" : "VON DER STEINLAWINE ERSCHLAGEN");
   $("endText").textContent = fly
-    ? `Drei Ballone geplatzt. Höchster Punkt: ${st.n} (${stnAlt(st)}). Ein Schwarznasenschaf landet zum Glück weich – lies nach, woran es lag, und dann gleich wieder hinauf.`
+    ? `Drei Ballone geplatzt – zum Glück hatte das Schwarznasenschaf einen Fallschirm dabei. Höchster Punkt: ${st.n} (${stnAlt(st)}). Lies nach, woran es lag, und dann gleich wieder hinauf.`
     : win
     ? "Die Schneeziege steht auf dem Schweizer Gipfel des Matterhorns. Für den Abstieg braucht man so viel Zeit wie für den Aufstieg – für heute reicht der Ausblick."
     : `${state.maxErr} Fehler. Höchster erreichter Punkt: ${ROUTE[state.maxPos].n}. Lies nach, woran es lag – dann gleich wieder hinauf.`;
@@ -2812,7 +2883,7 @@ document.addEventListener("keydown", e => {
 setMod(store.get("mod", null)); // letztes Fach vorwählen; beim ersten Besuch wird gefragt
 renderSettings(); show("start"); renderHud();
 requestAnimationFrame(frame);
-window.__hg = location.hash === "#test" ? { startCeremony, startRaclette, regaRescue, state, goat, ROUTE, walkTo, XT, solHtml, pool, renderHud, fallIntoCrevasse, crushedByBoulder, slideBack, rockfall, trainTo, maybeEncounter, nextQ, cam, leaveHut, drinkWine, randomName, showEnd, setMod, renderSettings, startGame, answer, MODS, checkInput, parseNum, norm, get MOD() { return MOD; }, setGame, sheep, STN, STEP, flyAltTxt, fmtAlt, flyFall, popBalloon, get GAME() { return GAME; }, get camP() { return camP; }, set camP(v) { camP = v; } } : undefined;
+window.__hg = location.hash === "#test" ? { startCeremony, startRaclette, regaRescue, state, goat, ROUTE, walkTo, XT, solHtml, pool, renderHud, fallIntoCrevasse, crushedByBoulder, slideBack, rockfall, trainTo, maybeEncounter, nextQ, cam, leaveHut, drinkWine, randomName, showEnd, setMod, renderSettings, startGame, answer, MODS, checkInput, parseNum, norm, get MOD() { return MOD; }, setGame, sheep, STN, STEP, flyAltTxt, fmtAlt, flyFall, popBalloon, get GAME() { return GAME; }, get camP() { return PW(camW); }, set camP(v) { camW = WY(v); }, WY, PW, GAPF } : undefined;
 })();
 </script>
 
