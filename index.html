@@ -1165,11 +1165,12 @@ const STEP = 200, SP = 84; // Punkte je Station · Abstand zweier Stationen in B
 const AU = 1.495978707e11, LY = 9.4607e15, KM = 1e3;
 const STN = [ // n: Name, s: Kurzname (Bestenliste/Auswertung), alt: Höhe bzw. Entfernung von der Erde in m, ap: Näherungswert
   { n: "Alp im Oberwallis", s: "Alp", alt: 2100, ap: 1, d: "alp" },
-  { n: "Steinadler", s: "Steinadler", alt: 3000, ap: 1, d: "eagle" },
+  { n: "Bartgeier · frisst Schafsknochen", s: "Bartgeier", alt: 3000, ap: 1, d: "vulture" },
   { n: "Matterhorn", s: "Matterhorn", alt: 4478, d: "mhorn" },
   { n: "Wolkendecke", s: "Wolken", alt: 6000, ap: 1, d: "clouds" },
   { n: "Verkehrsflugzeug", s: "Flugzeug", alt: 11000, ap: 1, d: "plane" },
   { n: "Concorde", s: "Concorde", alt: 18000, ap: 1, d: "concorde" },
+  { n: "Ozonloch · gestiftet von FCKW-Spraydosen", s: "Ozonloch", alt: 20 * KM, ap: 1, d: "ozone" },
   { n: "Wetterballon von MeteoSchweiz (Payerne)", s: "Wetterballon", alt: 25 * KM, ap: 1, d: "wballoon" },
   { n: "Sternschnuppen verglühen", s: "Meteore", alt: 85 * KM, ap: 1, d: "meteors" },
   { n: "Kármán-Linie · Grenze zum Weltraum", s: "Kármán-Linie", alt: 100 * KM, d: "karman" },
@@ -1177,15 +1178,17 @@ const STN = [ // n: Name, s: Kurzname (Bestenliste/Auswertung), alt: Höhe bzw. 
   { n: "Raumstation ISS", s: "ISS", alt: 420 * KM, ap: 1, d: "iss" },
   { n: "Weltraumteleskop Hubble", s: "Hubble", alt: 540 * KM, ap: 1, d: "hubble" },
   { n: "CHEOPS (Uni Bern)", s: "CHEOPS", alt: 700 * KM, ap: 1, d: "cheops" },
+  { n: "Weltraumschrott · Satellitencrash 2009", s: "Schrott", alt: 789 * KM, d: "debris" },
   { n: "Interkontinentalraketen · Bahnscheitel", s: "ICBM", alt: 1200 * KM, ap: 1, d: "icbm" },
   { n: "Innerer Van-Allen-Gürtel", s: "Van Allen", alt: 3000 * KM, ap: 1, d: "vanallen" },
   { n: "GPS-Satelliten", s: "GPS", alt: 20200 * KM, d: "gps" },
   { n: "Geostationäre Bahn · Meteosat", s: "Geostationär", alt: 35786 * KM, d: "geo" },
+  { n: "Friedhofsorbit · Satelliten im Ruhestand", s: "Friedhofsorbit", alt: 36100 * KM, ap: 1, d: "graveyard" },
   { n: "Mond", s: "Mond", alt: 384400 * KM, d: "moon" },
   { n: "Apollo 13 · weiteste Menschen", s: "Apollo 13", alt: 400171 * KM, d: "apollo" },
   { n: "James-Webb-Teleskop (L2)", s: "James Webb", alt: 1.5e6 * KM, ap: 1, d: "jwst" },
-  { n: "Venus (kleinster Abstand)", s: "Venus", alt: 38e6 * KM, ap: 1, d: "venus" },
-  { n: "Mars (kleinster Abstand)", s: "Mars", alt: 56e6 * KM, ap: 1, d: "mars" },
+  { n: "Venus · Venera 13 hielt 127 Minuten durch", s: "Venus", alt: 38e6 * KM, ap: 1, d: "venus" },
+  { n: "Mars · Sonde verglühte wegen lbf statt N", s: "Mars", alt: 56e6 * KM, ap: 1, d: "mars" },
   { n: "Sonne", s: "Sonne", alt: AU, d: "sun" },
   { n: "Asteroidengürtel · Ceres", s: "Ceres", alt: 1.6 * AU, ap: 1, d: "asteroids" },
   { n: "Jupiter", s: "Jupiter", alt: 4.2 * AU, ap: 1, d: "jupiter" },
@@ -1205,7 +1208,7 @@ const STN = [ // n: Name, s: Kurzname (Bestenliste/Auswertung), alt: Höhe bzw. 
   { n: "Zentrum der Milchstrasse", s: "Milchstrasse", alt: 26000 * LY, ap: 1, d: "galcenter" },
   { n: "Grosse Magellansche Wolke", s: "Magellan", alt: 160000 * LY, ap: 1, d: "lmc" },
   { n: "Andromedagalaxie", s: "Andromeda", alt: 2.5e6 * LY, ap: 1, d: "andromeda" },
-  { n: "M87 · Schwarzes Loch", s: "M87", alt: 53e6 * LY, ap: 1, d: "m87" },
+  { n: "M87 · Schwarzes Loch · Spaghettifizierung", s: "M87", alt: 53e6 * LY, ap: 1, d: "m87" },
   { n: "Coma-Galaxienhaufen", s: "Coma-Haufen", alt: 320e6 * LY, ap: 1, d: "coma" },
   { n: "Quasar 3C 273", s: "Quasar", alt: 2.4e9 * LY, ap: 1, d: "quasar" },
   { n: "Fernste bekannte Galaxien", s: "Urgalaxien", alt: 13.5e9 * LY, ap: 1, d: "farg" },
@@ -1332,8 +1335,10 @@ function skyTick(dt) {
     if (a !== lastHudAlt) { lastHudAlt = a; $("alt").textContent = a; $("wp").textContent = stnAt(Math.floor(sheep.p + 1e-6)).n; }
   }
 }
-const SKY_STOPS = [[-2, [214, 238, 250]], [0, [191, 224, 245]], [2.5, [126, 182, 226]], [4.5, [86, 147, 204]], [6.5, [40, 78, 140]], [8, [16, 30, 64]], [9.5, [6, 9, 20]],
-  [37, [6, 8, 18]], [39, [13, 8, 26]], [43, [14, 8, 22]], [44.5, [24, 11, 14]], [45.5, [40, 18, 10]], [46.5, [4, 3, 8]]];
+const sv = (d, o = 0) => STN.findIndex(st => st.d === d) + o; // Himmelsfarben hängen an Stationen, nicht an Nummern
+const SKY_STOPS = [[-2, [214, 238, 250]], [0, [191, 224, 245]], [2.5, [126, 182, 226]], [4.5, [86, 147, 204]], [sv("wballoon", 0.5), [40, 78, 140]], [sv("karman"), [16, 30, 64]], [sv("aurora", 0.5), [6, 9, 20]],
+  [sv("orion"), [6, 8, 18]], [sv("lmc"), [13, 8, 26]], [sv("quasar"), [14, 8, 22]], [sv("farg", 0.5), [24, 11, 14]], [sv("cmb", 0.5), [40, 18, 10]], [sv("edge", 0.5), [4, 3, 8]]];
+const STAR_V = sv("wballoon"); // ab hier erscheinen Sterne
 function skyCol(v) {
   let i = 0; while (i < SKY_STOPS.length - 2 && v > SKY_STOPS[i + 1][0]) i++;
   const [v0, c0] = SKY_STOPS[i], [v1, c1] = SKY_STOPS[i + 1], t = clamp((v - v0) / (v1 - v0), 0, 1);
@@ -1380,10 +1385,56 @@ function ellipsePts(cx, cy, rx, ry, front, c) { // Ring: vordere (front) oder hi
 function sat(x, y, body) { R(x - 2, y - 2, 5, 5, body); R(x - 9, y - 1, 6, 3, "#2c4a8b"); R(x + 4, y - 1, 6, 3, "#2c4a8b"); R(x - 3, y, 1, 1, "#c3c8ce"); R(x + 3, y, 1, 1, "#c3c8ce"); }
 function cumulus(x, y, w) { R(x, y, w, 5, "#ffffff"); R(x + 3, y - 4, w - 7, 4, "#ffffff"); R(x + 6, y - 7, Math.max(4, (w / 3) | 0), 3, "#ffffff"); R(x + 1, y + 5, w - 2, 1, "#d7e6f1"); }
 const OBJ = {
-  eagle(x, y, now) {
-    const fx = Math.round(x + Math.sin(now / 2300) * 22), up = Math.floor(now / 280) % 2, d = Math.cos(now / 2300) < 0 ? -1 : 1;
-    for (let k = 1; k <= 7; k++) { const dy = up ? -Math.min(k, 4) + (k > 5 ? 1 : 0) : Math.min(k, 3) - 1; R(fx - k, y + dy, 1, 2, "#3a2414"); R(fx + k, y + dy, 1, 2, "#3a2414"); }
-    R(fx - 3, y, 7, 2, "#4a2f1a"); R(fx + 3 * d - (d < 0 ? 1 : 0), y - 1, 2, 2, "#c9a14a"); R(fx + 5 * d, y, 1, 1, "#f2c94c"); R(fx - 5 * d - (d > 0 ? 1 : 0), y, 2, 1, "#3a2414");
+  vulture(x, y, now) { // Bartgeier: dunkle Schwingen, rostroter Bauch, heller Kopf mit schwarzem «Bart»; lässt einen Knochen fallen
+    const fx = Math.round(x + Math.sin(now / 2600) * 24), d = Math.cos(now / 2600) < 0 ? -1 : 1, up = Math.floor(now / 320) % 2;
+    for (let k = 1; k <= 11; k++) { // lange, schmale Schwingen mit gefingerten Spitzen
+      const dy = up ? -Math.min(k, 5) + (k > 8 ? 2 : 0) : Math.min(k, 4) - 1;
+      R(fx - k, y + dy, 1, k > 9 ? 1 : 2, "#2e2a28"); R(fx + k, y + dy, 1, k > 9 ? 1 : 2, "#2e2a28");
+    }
+    R(fx - 3, y - 1, 7, 3, "#c8743a"); R(fx - 2, y + 2, 5, 1, "#a85a2a"); // Bauch
+    R(fx - 5 * d - (d > 0 ? 2 : 0), y, 3, 2, "#2e2a28"); R(fx - 7 * d - (d > 0 ? 1 : 0), y + 1, 2, 1, "#2e2a28"); // Keilschwanz
+    R(fx + 3 * d - (d < 0 ? 2 : 0), y - 2, 3, 3, "#f1e3c6"); R(fx + 5 * d, y - 1, 1, 1, "#d9c08a"); R(fx + 4 * d, y + 1, 1, 1, "#111111"); // Kopf, Schnabel, Bart
+    const T = 4200, t = (now % T) / T; // Knochen: getragen, dann aus der Höhe auf die Felsen fallen lassen
+    const bone = (bx, by) => { R(bx - 3, by, 7, 1, "#f4efe2"); R(bx - 4, by - 1, 2, 3, "#f4efe2"); R(bx + 3, by - 1, 2, 3, "#f4efe2"); };
+    if (t < 0.55) bone(fx, y + 4);
+    else { const f = (t - 0.55) / 0.45, bx = fx - d * f * 6; lctx.globalAlpha = 1 - f * 0.8; bone(bx, y + 4 + f * f * 70); lctx.globalAlpha = 1; }
+  },
+  ozone(x, y, now) { // Ozonschicht mit Loch; eine Spraydose sprüht FCKW, Chlorradikale (grün) nagen am Rand
+    const hc = W * 0.5 + Math.sin(now / 5000) * 10, hw = 34 + Math.sin(now / 1700) * 3;
+    for (let xx = 0; xx < W; xx++) {
+      const e = Math.abs(xx - hc) - hw - hash(xx, 17) * 6; if (e < 0) continue;
+      const a = clamp(e / 14, 0.15, 1);
+      lctx.globalAlpha = 0.3 * a; R(xx, y - 3, 1, 14, "#8f7bff"); lctx.globalAlpha = 0.5 * a; R(xx, y + 2, 1, 4, "#b9a8ff");
+    }
+    lctx.globalAlpha = 1;
+    const cx = Math.round(hc - hw - 30), cy = y + 26; // Spraydose
+    R(cx, cy - 8, 6, 11, "#e3001b"); R(cx, cy - 4, 6, 3, "#ffffff"); R(cx + 1, cy - 10, 4, 2, "#c3c8ce"); R(cx + 2, cy - 12, 2, 2, "#3a3d44");
+    for (let k = 0; k < 22; k++) { // FCKW-Wolke steigt zum Loch, Cl· (grün) am Lochrand
+      const t = ((now / 2400 + k / 22) % 1), px = cx + 4 + t * (hw + 26), py = cy - 12 - t * 26 + Math.sin(k * 2.1 + now / 300) * 2;
+      lctx.globalAlpha = 0.85 - t * 0.5; R(px, py, 1, 1, t > 0.6 ? "#4ee06a" : "#e8e8e8"); lctx.globalAlpha = 1;
+    }
+  },
+  debris(x, y, now) { // Trümmerwolke nach der Kollision Iridium 33 / Kosmos 2251 (789 km): Bruchstücke auf allen Bahnen
+    for (let k = 0; k < 80; k++) {
+      const sp = (hash(k, 71) - 0.5) * 40, px = ((hash(k, 72) * (W + 40) + now / 1000 * sp) % (W + 40) + W + 40) % (W + 40) - 20;
+      const py = y + (hash(k, 73) - 0.5) * 30, sz = hash(k, 74) < 0.2 ? 2 : 1;
+      R(px, py, sz, sz, hash(k, 75) < 0.3 ? "#2c4a8b" : hash(k, 75) < 0.6 ? "#c3c8ce" : "#8d8279");
+    }
+    const bx = x - 14, by = y - 2; // halber Satellit mit abgerissenem Sonnenpaddel, taumelt
+    const tum = Math.floor(now / 500) % 2;
+    R(bx - 2, by - 2, 5, 5, "#c9a14a"); R(bx + 3, by - 1 + tum, 6, 3, "#2c4a8b"); R(bx - 6, by - 2 + tum, 3, 1, "#2c4a8b"); R(bx - 4, by + 1 - tum, 2, 2, "#2c4a8b");
+    R(x + 10, y + 4, 4, 3, "#8d8279"); R(x + 14, y + 5, 3, 1, "#2c4a8b"); // zweites Wrackteil
+    if (Math.floor(now / 3000) % 3 === 0 && (now % 3000) < 220) { glow(x, y, 6, "#ffcf6b", 0.6); R(x - 1, y - 1, 3, 3, "#ffffff"); } // gelegentlicher Einschlag
+  },
+  graveyard(x, y, now) { // Friedhofsorbit ~300 km über der geostationären Bahn: ausgediente Satelliten, Grabsteine
+    lctx.globalAlpha = 0.45; for (let xx = ((now / 400) % 22) - 22; xx < W; xx += 22) R(xx, y + 10, 3, 1, "#8d8279"); lctx.globalAlpha = 1;
+    const dead = (sx, sy, tilt) => { // ausgedienter Satellit mit X-Augen
+      R(sx - 4, sy - 3, 9, 7, "#7d736b"); R(sx - 10, sy - 1 + tilt, 6, 3, "#4a4f5c"); R(sx + 5, sy - 1 - tilt, 6, 3, "#4a4f5c");
+      for (const ex of [sx - 3, sx + 1]) { R(ex, sy - 2, 1, 1, "#111111"); R(ex + 2, sy - 2, 1, 1, "#111111"); R(ex + 1, sy - 1, 1, 1, "#111111"); R(ex, sy, 1, 1, "#111111"); R(ex + 2, sy, 1, 1, "#111111"); }
+      R(sx - 1, sy + 2, 3, 1, "#3a3d44"); };
+    dead(x - 22, y - 2, 1); dead(x + 20, y + 3, -1);
+    const stone = (gx, gy) => { R(gx - 3, gy - 6, 7, 8, "#9a9aa2"); R(gx - 2, gy - 7, 5, 1, "#9a9aa2"); R(gx, gy - 5, 1, 5, "#3a3d44"); R(gx - 1, gy - 4, 3, 1, "#3a3d44"); };
+    stone(x, y + Math.round(Math.sin(now / 1500) * 1.5));
   },
   mhorn() {},
   clouds(x, y, now) { for (let k = 0; k < 7; k++) { const cx = ((k * W / 5 + now / 1000 * 3 * (1 + k % 3)) % (W + 60)) - 30; cumulus(cx, y + (k % 3 - 1) * 9, 18 + (k * 7) % 16); } },
@@ -1393,7 +1444,7 @@ const OBJ = {
       const t = ((now + r.ph) % r.T) / r.T, span = W + 90, x0 = r.dir > 0 ? -45 : W + 45, arc = 20, base = y - 6 + k * 13;
       const bx = tt => x0 + r.dir * tt * span, by = tt => base - arc * Math.sin(Math.PI * tt);
       lctx.globalAlpha = 0.55; for (let j = 0; j <= 90; j += 2) { const tt = j / 90; if (tt > t) break; R(bx(tt), by(tt), 1, 1, "#ffc2b0"); } lctx.globalAlpha = 1;
-      const ang = Math.atan2(-arc * Math.PI * Math.cos(Math.PI * t), r.dir * span);
+      const ang = Math.atan2(-r.dir * arc * Math.PI * Math.cos(Math.PI * t), span); // gespiegeltes Sprite (dir < 0) nicht zusätzlich um 180° drehen
       lctx.save(); lctx.translate(Math.round(bx(t)), Math.round(by(t))); lctx.rotate(Math.round(ang / (Math.PI / 8)) * (Math.PI / 8));
       lctx.drawImage(r.spr, -(r.spr.width >> 1), -(r.spr.height >> 1)); lctx.restore();
     });
@@ -1456,8 +1507,19 @@ const OBJ = {
     for (let r = 0; r < 5; r++) R(x - 14 + r, y + 3 + r, 28 - 2 * r, 1, r % 2 ? "#c46bd6" : "#9c4fb8");
     for (let i = -1; i <= 1; i++) for (let j = -1; j <= 1; j++) R(x - 2 + i * 4, y - 6 + j * 3 + (i ? 1 : 0), 3, 2, "#e8b84a");
   },
-  venus(x, y) { disc(x, y, 11, "#e8d7a6", "#bfae7e", "#f6ecd0"); },
-  mars(x, y) { disc(x, y, 9, "#c1440e", "#8a2f0a"); R(x - 2, y - 9, 5, 2, "#ffffff"); },
+  venus(x, y, now) { // dazu Venera 13 auf dem Weg nach unten: 465 °C, 90 bar – nach 127 Minuten war Schluss
+    disc(x, y, 11, "#e8d7a6", "#bfae7e", "#f6ecd0");
+    const t = (now % 5000) / 5000, lx = x + 24 - t * 11, ly = y - 6 + t * 8;
+    R(lx - 2, ly - 2, 5, 4, "#cfd6dd"); R(lx - 3, ly + 2, 7, 1, "#8d8279"); R(lx, ly - 5, 1, 3, "#c3c8ce");
+    if (t > 0.75) { lctx.globalAlpha = (t - 0.75) * 3; R(lx - 2, ly - 2, 5, 4, "#ff6b2a"); lctx.globalAlpha = 1; } // glüht durch
+  },
+  mars(x, y, now) { // Mars Climate Orbiter (1999): Software rechnete in lbf·s statt N·s, Sonde tauchte zu tief ein und verglühte
+    disc(x, y, 9, "#c1440e", "#8a2f0a"); R(x - 2, y - 9, 5, 2, "#ffffff");
+    const T = 6000, t = (now % T) / T, a = -0.6 + t * 2.6, r = 24 - t * 14, ox = x + Math.cos(a) * r, oy = y + 3 + Math.sin(a) * r * 0.55;
+    if (t < 0.82) { R(ox - 1, oy - 1, 3, 3, "#c9a14a"); R(ox - 5, oy, 3, 1, "#2c4a8b"); R(ox + 3, oy, 3, 1, "#2c4a8b");
+      if (t > 0.5) for (let k = 1; k < 6; k++) { lctx.globalAlpha = (t - 0.5) * 2 / k; R(ox - Math.cos(a + 1.6) * k * 2, oy - Math.sin(a + 1.6) * k * 1.4, 2, 1, "#ff8a2a"); } lctx.globalAlpha = 1; }
+    else { glow(ox, oy, 4, "#ffcf6b", 1 - (t - 0.82) * 5); }
+  },
   sun(x, y, now) { glow(x, y, 42, "#ffcf6b", 0.12); glow(x, y, 35, "#ffcf6b", 0.22); disc(x, y, 28, "#ffd23a", "#ffb02e", "#fff1a8"); if (Math.floor(now / 300) % 2) R(x + 6, y + 4, 2, 2, "#e09a20"); },
   asteroids(x, y) {
     for (let k = 0; k < 26; k++) { const s = 1 + Math.floor(hash(k, 62) * 3); R(hash(k, 61) * W, y + (hash(k, 63) - 0.5) * 34, s, s, k % 2 ? "#8d8279" : "#a39a8c"); }
@@ -1502,7 +1564,13 @@ const OBJ = {
     }
     lctx.globalAlpha = 1; glow(x, y, 6, "#fff1c4", 0.4); disc(x, y, 2, "#fff8e0");
   },
-  m87(x, y) { glow(x, y, 14, "#ff8a2a", 0.15); disc(x, y, 9, "#ff8a2a"); disc(x, y + 1, 8, "#ffcf6b"); disc(x, y, 6, "#05030a"); },
+  m87(x, y, now) { // Schwarzes Loch; ein Astronaut wird von den Gezeitenkräften zur «Spaghetti» gezogen
+    glow(x, y, 14, "#ff8a2a", 0.15); disc(x, y, 9, "#ff8a2a"); disc(x, y + 1, 8, "#ffcf6b"); disc(x, y, 6, "#05030a");
+    const T = 8000, t = (now % T) / T, a = 0.4 + t * 5, r = 36 * (1 - t) + 7, len = Math.floor(Math.max(0, t - 0.25) * 40);
+    const hx = x + Math.cos(a) * r, hy = y + Math.sin(a) * r * 0.6;
+    for (let k = 1; k <= len; k++) { const aa = a - k * 0.035, rr = r + k * 0.45; R(x + Math.cos(aa) * rr, y + Math.sin(aa) * rr * 0.6, 1, 1, "#e8e8e8"); } // in die Länge gezogen
+    if (t < 0.85) { const st = Math.min(4, Math.floor(t * 6)); R(hx - 1, hy - 2, 3, 3, "#f4f4f4"); R(hx, hy - 1, 2, 1, "#5fb0ff"); R(hx - 1, hy + 1, 3, 3 + st, "#e8e8e8"); R(hx - 2, hy + 1, 1, 2, "#e8e8e8"); R(hx + 2, hy + 1, 1, 2, "#e8e8e8"); }
+  },
   coma(x, y) { for (let k = 0; k < 16; k++) { const gx = x + (hash(k, 121) - 0.5) * 60, gy = y + (hash(k, 122) - 0.5) * 30; glow(gx, gy, 2, "#ffe9b0", 0.35); R(gx - 1, gy, 3, 1, "#ffe9b0"); R(gx, gy, 1, 1, "#ffffff"); } },
   quasar(x, y) { lctx.globalAlpha = 0.6; R(x, y - 22, 1, 16, "#7fb2ff"); R(x, y + 7, 1, 16, "#7fb2ff"); lctx.globalAlpha = 1; spike(x, y, "#ffffff", 7); },
   farg(x, y) { for (let k = 0; k < 6; k++) { const gx = x + (hash(k, 131) - 0.5) * 40, gy = y + (hash(k, 132) - 0.5) * 20; glow(gx, gy, 2, "#ff6b4a", 0.4); R(gx, gy, 2, 1, "#ff8a5a"); } },
@@ -1535,7 +1603,7 @@ function rocketSprite(f, dir) { // Rakete 32×12 mit gerahmter Flagge auf dem Ru
 }
 const ROCKETS = [["us", 1, 7000, 0], ["ru", -1, 8200, 2500], ["cn", 1, 7600, 5200], ["kp", -1, 6900, 1300]]
   .map(([f, dir, T, ph]) => ({ f, dir, T, ph, spr: rocketSprite(f, dir) }));
-const WIDE = new Set(["clouds", "karman", "aurora", "vanallen", "helio", "oort", "ly", "galcenter", "cmb", "edge", "asteroids", "meteors"]);
+const WIDE = new Set(["ozone", "debris", "clouds", "karman", "aurora", "vanallen", "helio", "oort", "ly", "galcenter", "cmb", "edge", "asteroids", "meteors"]);
 function stnX(i) { const off = Math.min(W * 0.3, 90); return Math.round(W / 2 + (i % 2 ? 1 : -1) * off); }
 function drawMhorn(mx, top, base) { // Matterhorn: Gipfel auf Höhe der Station 2, Fuss auf der Alp
   const hgt = base - top;
@@ -1641,12 +1709,12 @@ function drawSky(now) {
   for (let sy = 0; sy < H; sy++) { L.fillStyle = skyCol(vAt(sy)); L.fillRect(0, sy, W, 1); }
   // Sterne mit Parallaxe; sie erscheinen ab etwa der Concorde-Höhe
   const sOff = cw * 0.35, CELL = 7;
-  if (vAt(0) > 6) {
+  if (vAt(0) > STAR_V) {
     const r0 = Math.floor((sOff - (H - baseY)) / CELL) - 1, r1 = Math.ceil((sOff + baseY) / CELL) + 1;
     for (let r = r0; r <= r1; r++) for (let c = 0; c * CELL < W; c++) {
       const h = hash(c, r + 5000); if (h > 0.1) continue;
       const sy = Math.round(baseY - (r * CELL - sOff) + hash(c, r + 7000) * CELL), sx = c * CELL + Math.floor(hash(c + 3, r) * CELL);
-      if (clamp((vAt(sy) - 6.5) / 3.5, 0, 1) <= hash(c + 9, r + 1)) continue;
+      if (clamp((vAt(sy) - STAR_V - 0.5) / 3.5, 0, 1) <= hash(c + 9, r + 1)) continue;
       L.fillStyle = h < 0.03 ? "#ffe9b0" : h < 0.05 ? "#bcd8ff" : "#ffffff"; L.fillRect(sx, sy, 1, 1);
       if (h < 0.012 && Math.floor(now / 500 + c) % 3 === 0) { L.globalAlpha = 0.6; L.fillRect(sx - 1, sy, 3, 1); L.fillRect(sx, sy - 1, 1, 3); L.globalAlpha = 1; }
     }
@@ -2193,7 +2261,7 @@ function renderSettings() {
   else w.hidden = true;
   if (GAME === "schaf") {
     const bf = store.get(gk("best2"), { top: 0, score: 0 });
-    $("best").textContent = bf.top > 0 ? `${MODS[MOD].short} · Höchster Punkt bisher: ${stnAt(bf.top).n}` : `${n} Fragen bereit`;
+    $("best").textContent = bf.score >= STEP ? `${MODS[MOD].short} · Höchster Punkt bisher: ${stnAt(Math.floor(bf.score / STEP + 1e-9)).n}` : `${n} Fragen bereit`;
   } else {
   const best = store.get(mk("best2"), { pos: Z, summits: 0 });
   $("best").textContent = best.summits ? `${MODS[MOD].short} · Gipfel erreicht: ${best.summits}×` : best.pos > Z ? `${MODS[MOD].short} · Höchster Punkt bisher: ${ROUTE[best.pos].n}` : `${n} Fragen bereit`;
@@ -2203,7 +2271,7 @@ function renderSettings() {
 }
 const boardTitle = where => `Bestenliste ${MODS[MOD].short}${GAME === "schaf" ? " · Höhenflug" : ""} · ${where}`;
 const collName = () => MODS[MOD].coll + (GAME === "schaf" ? "_schaf" : "");
-const hLbl = e => (GAME === "schaf" ? stnAt(e.top).s : e.win ? "Gipfel" : "Etappe " + e.top);
+const hLbl = e => (GAME === "schaf" ? stnAt(Math.floor(e.score / STEP + 1e-9)).s : e.win ? "Gipfel" : "Etappe " + e.top);
 function localBoard() { // Bestenliste dieses Geräts für das gewählte Fach und den gewählten Spielmodus
   const list = store.get(gk("scores"), []);
   $("boardLbl").textContent = boardTitle("dieses Gerät");
