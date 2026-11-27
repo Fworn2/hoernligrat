@@ -58,6 +58,11 @@ button{cursor:pointer}
 .seg.cur{box-shadow:inset 0 0 0 2px var(--cyan)}
 .prog .lbl{color:#24405e;font-size:13px;text-shadow:0 1px 0 rgba(255,255,255,.5)}
 .inv{font-size:15px;color:var(--gold)}
+#rundflug{position:fixed;left:50%;bottom:14px;transform:translateX(-50%);z-index:40;width:min(640px,calc(100% - 24px));background:rgba(14,26,43,.86);color:#eaf3fb;border-radius:12px;padding:10px 12px;font-family:var(--read);font-size:14px;box-shadow:0 4px 18px rgba(0,0,0,.35)}
+#rundflug .rt{font-weight:600;margin-bottom:8px;text-align:center}
+#rundflug .rb{display:flex;flex-wrap:wrap;gap:6px;justify-content:center}
+#rundflug button,#rundflug a{font:inherit;font-size:13px;background:#24364f;color:#eaf3fb;border:1px solid #3d5675;border-radius:8px;padding:6px 10px;cursor:pointer;text-decoration:none}
+#rundflug button:hover,#rundflug a:hover{background:#30486a}
 body.fly #qCard{max-height:min(55vh,600px)} /* Höhenflug: mehr Himmel über dem Antwortkasten */
 .hud.fly .prog .lbl{background:rgba(14,26,43,.85);color:var(--ink);padding:1px 7px;text-shadow:none}
 @media (max-width:560px){.hud.fly .prog .lbl{letter-spacing:.06em;font-size:12px;white-space:nowrap;max-width:34vw;overflow:hidden;text-overflow:ellipsis}.hud.fly .panel .big{font-size:18px}}
@@ -1841,6 +1846,7 @@ function drawSky(now) {
 // (Faktor FLY_RATIO), damit Objekt und Name lesbar sind; dazwischen zügiger. Die Geschwindigkeit ist überall stetig.
 // Abschnitt [i, i+1]: u = u_i + (u_{i+1} − u_i)·f + (ū − …)·sin²(πf); Zeit je Abschnitt ≈ L/√(u_min·u_max) = FLY_TPS.
 const FLY_TPS = 1.35, FLY_RATIO = 2.6, FLY_RAMP = 0.5;
+let FLY_SPEED = 1; // nur der Rundflug ändert das Tempo
 const flyLen = i => WY(i + 1) - WY(i);
 const flyUmin = i => (i <= 0 ? flyLen(0) : (flyLen(i - 1) + flyLen(i)) / 2) / (FLY_TPS * Math.sqrt(FLY_RATIO));
 async function flyTo(to) {
@@ -1855,7 +1861,7 @@ async function flyTo(to) {
   const T = ts[N], r = Math.min(FLY_RAMP, T), D = T + r; // Trapez-Profil der Zeit: Anfahren und Abbremsen über r Sekunden
   const g = t => (t < r ? t * t / (2 * r) : t > D - r ? T - (D - t) * (D - t) / (2 * r) : t - r / 2);
   let j = 0;
-  await tween(D * 1000, p => {
+  await tween(D * 1000 / FLY_SPEED, p => {
     const t = clamp(g(p * D), 0, T);
     while (j < N - 1 && ts[j + 1] < t) j++;
     while (j > 0 && ts[j] > t) j--;
@@ -2969,8 +2975,32 @@ document.addEventListener("keydown", e => {
   else if (state.phase === "fb" && e.key === "Enter") { next(); e.preventDefault(); }
 });
 setMod(store.get("mod", null)); // letztes Fach vorwählen; beim ersten Besuch wird gefragt
+const RUNDFLUG = location.hash === "#rundflug";
+if (RUNDFLUG) GAME = "schaf"; // nur für diese Seite, die gespeicherte Wahl bleibt
 renderSettings(); show("start"); renderHud();
 requestAnimationFrame(frame);
+// Rundflug (Link mit #rundflug): fliegt ohne Fragen durch alle Stationen – zum Anschauen; es wird nichts gespeichert
+if (RUNDFLUG) (async () => {
+  const bar = document.createElement("div"); bar.id = "rundflug";
+  bar.innerHTML = `<div class="rt" id="rfTxt">Rundflug</div><div class="rb"><button type="button" id="rfPause">⏸ Pause</button>` +
+    `<button type="button" id="rfFast">Tempo ×1</button><button type="button" id="rfBack">◀ Station</button><button type="button" id="rfNext">Station ▶</button>` +
+    `<a href="./" id="rfExit">Zum Spiel</a></div>`;
+  document.body.appendChild(bar);
+  let paused = false, jump = 0, i = 0;
+  $("rfPause").onclick = () => { paused = !paused; $("rfPause").textContent = paused ? "▶ Weiter" : "⏸ Pause"; };
+  $("rfFast").onclick = () => { FLY_SPEED = FLY_SPEED >= 4 ? 1 : FLY_SPEED * 2; $("rfFast").textContent = `Tempo ×${FLY_SPEED}`; };
+  $("rfNext").onclick = () => { jump = 1; }; $("rfBack").onclick = () => { jump = -1; };
+  hideCards(); $("title").hidden = true; $("hud").hidden = true;
+  state.phase = "demo"; Object.assign(sheep, SHEEP0); camMode = "follow";
+  const txt = k => { const st = stnAt(k); $("rfTxt").textContent = `${k} / ${LAST} · ${st.n}${st.alt ? " · " + stnAlt(st) : ""}`; };
+  txt(0); await wait(1500);
+  while (true) {
+    if (jump) { i = clamp(i + jump, 0, LAST); jump = 0; sheep.p = i; camW = WY(i); txt(i); await wait(400); continue; }
+    if (paused || i >= LAST) { await wait(120); continue; }
+    i++; await flyTo(i); txt(i);
+    for (let w = 0; w < 9 && !jump; w++) await wait(100 / FLY_SPEED);
+  }
+})();
 window.__hg = location.hash === "#test" ? { startCeremony, startRaclette, regaRescue, state, goat, ROUTE, walkTo, XT, solHtml, pool, renderHud, fallIntoCrevasse, crushedByBoulder, slideBack, rockfall, trainTo, maybeEncounter, nextQ, cam, leaveHut, drinkWine, randomName, showEnd, setMod, renderSettings, startGame, answer, MODS, checkInput, parseNum, norm, get MOD() { return MOD; }, setGame, sheep, STN, STEP, flyAltTxt, fmtAlt, flyFall, popBalloon, get GAME() { return GAME; }, get camP() { return PW(camW); }, set camP(v) { camW = WY(v); }, WY, PW, GAPF } : undefined;
 })();
 </script>
