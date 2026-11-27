@@ -46,6 +46,11 @@ button{cursor:pointer}
 .life.on{background:var(--bad);box-shadow:inset 0 0 0 2px #ffb3b3}
 .life.bonus{box-shadow:inset 0 0 0 2px var(--gold)}
 .life.bonus.on{background:var(--bad)}
+/* Höhenflug: drei Ballone statt Fehlerkästchen */
+.bal{width:12px;height:15px;border-radius:50% 50% 46% 46%;background:var(--navy2);box-shadow:inset 0 0 0 2px #3c5878}
+.bal.on.r{background:#e3001b;box-shadow:inset 0 0 0 2px #ff8a8a}
+.bal.on.w{background:#f2f2f2;box-shadow:inset 0 0 0 2px #ffffff}
+.bal.on.g{background:var(--gold);box-shadow:inset 0 0 0 2px #fff1a8}
 .prog{display:flex;flex-direction:column;align-items:center;gap:4px;padding-top:4px}
 #segs{display:grid;grid-template-columns:repeat(12,10px);gap:3px}
 .seg{width:10px;height:10px;background:rgba(14,26,43,.85);box-shadow:inset 0 0 0 1px #3c5878}
@@ -53,6 +58,8 @@ button{cursor:pointer}
 .seg.cur{box-shadow:inset 0 0 0 2px var(--cyan)}
 .prog .lbl{color:#24405e;font-size:13px;text-shadow:0 1px 0 rgba(255,255,255,.5)}
 .inv{font-size:15px;color:var(--gold)}
+.hud.fly .prog .lbl{background:rgba(14,26,43,.85);color:var(--ink);padding:1px 7px;text-shadow:none}
+@media (max-width:560px){.hud.fly .prog .lbl{letter-spacing:.06em;font-size:12px;white-space:nowrap;max-width:34vw;overflow:hidden;text-overflow:ellipsis}.hud.fly .panel .big{font-size:18px}}
 .panel.err .big{font-size:0;line-height:0;padding:6px 0 5px}
 .prog .score{font-size:26px;line-height:1;color:var(--gold);font-variant-numeric:tabular-nums;text-shadow:2px 0 0 #0e1a2b,-2px 0 0 #0e1a2b,0 2px 0 #0e1a2b,0 -2px 0 #0e1a2b}
 .prog .mult{font-size:14px;letter-spacing:.1em;color:#2b1d00;background:var(--gold);padding:0 5px}
@@ -232,6 +239,7 @@ sub,sup{font-size:.7em;line-height:0}
 .mod:hover{box-shadow:inset 0 0 0 2px var(--cyan)}
 .mod[aria-pressed="true"]{box-shadow:inset 0 0 0 3px var(--gold);background:#123049}
 .mod[aria-pressed="true"] b{color:var(--gold)}
+.mods.games{grid-template-columns:repeat(2,minmax(0,1fr))}
 .mods.ask .mod{animation:modask 1.6s steps(2) infinite}
 @keyframes modask{50%{box-shadow:inset 0 0 0 2px var(--pink)}}
 @media (prefers-reduced-motion:reduce){.mods.ask .mod{animation:none}}
@@ -306,7 +314,7 @@ sub,sup{font-size:.7em;line-height:0}
 <div id="flash"></div>
 
 <div class="title" id="title">
-  <h1>HÖRNLIGRAT</h1>
+  <h1 id="gameTitle">HÖRNLIGRAT</h1>
 </div>
 
 <header class="hud" id="hud" hidden>
@@ -322,7 +330,7 @@ sub,sup{font-size:.7em;line-height:0}
     <span class="mult" id="mult" hidden></span>
   </div>
   <div class="panel err notch">
-    <span class="lbl">Fehler</span>
+    <span class="lbl" id="livesLbl">Fehler</span>
     <span class="big" id="lives"></span>
     <span class="sub" id="streak">&nbsp;</span>
     <span class="inv" id="inv"></span>
@@ -334,6 +342,10 @@ sub,sup{font-size:.7em;line-height:0}
 <div class="dock">
   <section class="card notch" id="startCard">
     <div class="eyebrow"><span id="modEyebrow">Lernspiel · UZH</span></div>
+    <div class="set">
+      <span class="lbl">Spielmodus</span>
+      <div class="mods games" id="gameChips"></div>
+    </div>
     <div class="set">
       <span class="lbl">Fach</span>
       <div class="mods" id="modChips"></div>
@@ -353,21 +365,16 @@ sub,sup{font-size:.7em;line-height:0}
     </div>
     <div class="set">
       <span class="lbl">So läuft's</span>
-      <ul class="rules">
-        <li><span><b>Richtig:</b> eine Etappe höher – 24 bis zum Gipfel</span></li>
-        <li class="dn"><span><b>Falsch:</b> du rutschst zurück</span></li>
-        <li class="q"><span><b>Serien:</b> bis ×3 Punkte</span></li>
-        <li class="x"><span><b>Fünfter Fehler:</b> Absturz</span></li>
-      </ul>
+      <ul class="rules" id="rules"></ul>
     </div>
     <div class="meta"><span id="best"></span><button class="chip mini" id="soundBtn" aria-pressed="true">TON AN</button></div>
   </section>
 
   <div id="nameShade" hidden></div>
   <section class="card notch quest" id="nameCard" hidden>
-    <div class="eyebrow"><span>Hörnlihütte · Tourenbuch</span></div>
-    <h2 class="qtext">Wer klettert heute?</h2>
-    <div class="expl"><p style="margin:0">Trag deinen Namen ins Tourenbuch ein – mit ihm erscheinst du am Schluss in der Bestenliste aller Spieler. Lässt du das Feld leer, bekommst du einen zufälligen Chemie-Namen.</p></div>
+    <div class="eyebrow"><span id="nameEyebrow">Hörnlihütte · Tourenbuch</span></div>
+    <h2 class="qtext" id="nameQ">Wer klettert heute?</h2>
+    <div class="expl"><p style="margin:0" id="nameTxt">Trag deinen Namen ins Tourenbuch ein – mit ihm erscheinst du am Schluss in der Bestenliste aller Spieler. Lässt du das Feld leer, bekommst du einen zufälligen Chemie-Namen.</p></div>
     <form class="inbar" id="nameForm" autocomplete="off">
       <input id="startName" type="text" maxlength="18" autocomplete="off" spellcheck="false" placeholder="Dein Name" aria-label="Dein Name">
       <button class="btn alt" id="diceBtn" type="button">ZUFALLSNAME</button>
@@ -449,6 +456,10 @@ const MODS = DATA.mods, SWISS = DATA.swiss; // Fächer: oc = CHE 203, ac = CHE 2
 let MOD = null, Q = [], BLOCKS = [];        // gewähltes Fach und dessen Fragen/Blöcke (setMod)
 const mk = k => (MOD && MOD !== "oc" ? k + "." + MOD : k); // Speicherschlüssel je Fach (OC behält die alten)
 const $ = id => document.getElementById(id);
+// Spielmodus: grat = Hörnligrat (Matterhorn), schaf = Höhenflug (Schwarznasenschaf, open end); eigene Bestenlisten je Modus
+let GAME = (() => { try { return JSON.parse(localStorage.getItem("hgrat.game")) === "schaf" ? "schaf" : "grat"; } catch (e) { return "grat"; } })();
+const gk = k => mk(k) + (GAME === "schaf" ? ".schaf" : "");
+const GAMES = { grat: { name: "Hörnligrat", sub: "Matterhorn · 24 Etappen bis zum Gipfel" }, schaf: { name: "Höhenflug", sub: "Schwarznasenschaf · 3 Ballone · ohne Ende" } };
 const RM = matchMedia("(prefers-reduced-motion: reduce)").matches;
 const store = {
   get(k, d) { try { const v = localStorage.getItem("hgrat." + k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } },
@@ -860,6 +871,7 @@ function frame(now) {
   hutParts = hutParts.filter(p => p.life > 0);
   if (state.phase === "mini" && state.mini && !state.mini.over) miniTick(now);
   if (cer && !cer.done) { cer.p = clamp((now - cer.t0) / cer.dur, 0, 1); if (cer.p >= 1) finishCeremony(); }
+  if (GAME === "schaf") skyTick(dt);
   draw(now);
   requestAnimationFrame(frame);
 }
@@ -938,6 +950,7 @@ function draw(now) {
     for (const p of hutPops) { const age = (now - p.t0) / 1300; ctx.globalAlpha = 1 - age; ctx.fillStyle = "#0e1a2b"; ctx.fillText(p.text, W * 0.26 * S + 2, (ty - 40) * S - age * 50 + 2); ctx.fillStyle = p.c; ctx.fillText(p.text, W * 0.26 * S, (ty - 40) * S - age * 50); ctx.globalAlpha = 1; }
     return;
   }
+  if (GAME === "schaf") return drawSky(now);
   const sh = cam.shake > 0.3 ? cam.shake : 0;
   const ox = Math.round(cam.x + (Math.random() - 0.5) * sh) - (W >> 1), oy = Math.round(cam.y + (Math.random() - 0.5) * sh) - Math.round(H * cam.fy);
   const sky = new Uint32Array(skyImg.data.buffer), m = new Uint32Array(mtnImg.data.buffer);
@@ -1136,6 +1149,488 @@ function draw(now) {
   }
 }
 
+/* ============ Höhenflug: Walliser Schwarznasenschaf an drei Ballonen ============ */
+// Höhe = Punkte: alle STEP Punkte eine Station (= zwei Single-Choice-Antworten ohne Serie). Serien heben Punkte und Steigtempo.
+const STEP = 200, SP = 84; // Punkte je Station · Abstand zweier Stationen in Bildpunkten der Szene
+const AU = 1.495978707e11, LY = 9.4607e15, KM = 1e3;
+const STN = [ // n: Name, s: Kurzname (Bestenliste/Auswertung), alt: Höhe bzw. Entfernung von der Erde in m, ap: Näherungswert
+  { n: "Alp im Oberwallis", s: "Alp", alt: 2100, ap: 1, d: "alp" },
+  { n: "Steinadler", s: "Steinadler", alt: 3000, ap: 1, d: "eagle" },
+  { n: "Matterhorn", s: "Matterhorn", alt: 4478, d: "mhorn" },
+  { n: "Wolkendecke", s: "Wolken", alt: 6000, ap: 1, d: "clouds" },
+  { n: "Höhe des Mount Everest", s: "Everest", alt: 8849, d: "everest" },
+  { n: "Verkehrsflugzeug", s: "Flugzeug", alt: 11000, ap: 1, d: "plane" },
+  { n: "Concorde", s: "Concorde", alt: 18000, ap: 1, d: "concorde" },
+  { n: "Wetterballon platzt", s: "Wetterballon", alt: 35 * KM, ap: 1, d: "wballoon" },
+  { n: "Sternschnuppen verglühen", s: "Meteore", alt: 85 * KM, ap: 1, d: "meteors" },
+  { n: "Kármán-Linie · Grenze zum Weltraum", s: "Kármán-Linie", alt: 100 * KM, d: "karman" },
+  { n: "Polarlicht", s: "Polarlicht", alt: 120 * KM, ap: 1, d: "aurora" },
+  { n: "Raumstation ISS", s: "ISS", alt: 420 * KM, ap: 1, d: "iss" },
+  { n: "Weltraumteleskop Hubble", s: "Hubble", alt: 540 * KM, ap: 1, d: "hubble" },
+  { n: "CHEOPS (Uni Bern)", s: "CHEOPS", alt: 700 * KM, ap: 1, d: "cheops" },
+  { n: "Innerer Van-Allen-Gürtel", s: "Van Allen", alt: 3000 * KM, ap: 1, d: "vanallen" },
+  { n: "GPS-Satelliten", s: "GPS", alt: 20200 * KM, d: "gps" },
+  { n: "Geostationäre Bahn · Meteosat", s: "Geostationär", alt: 35786 * KM, d: "geo" },
+  { n: "Mond", s: "Mond", alt: 384400 * KM, d: "moon" },
+  { n: "Apollo 13 · weiteste Menschen", s: "Apollo 13", alt: 400171 * KM, d: "apollo" },
+  { n: "James-Webb-Teleskop (L2)", s: "James Webb", alt: 1.5e6 * KM, ap: 1, d: "jwst" },
+  { n: "Venus (kleinster Abstand)", s: "Venus", alt: 38e6 * KM, ap: 1, d: "venus" },
+  { n: "Mars (kleinster Abstand)", s: "Mars", alt: 56e6 * KM, ap: 1, d: "mars" },
+  { n: "Sonne", s: "Sonne", alt: AU, d: "sun" },
+  { n: "Asteroidengürtel · Ceres", s: "Ceres", alt: 1.6 * AU, ap: 1, d: "asteroids" },
+  { n: "Jupiter", s: "Jupiter", alt: 4.2 * AU, ap: 1, d: "jupiter" },
+  { n: "Saturn", s: "Saturn", alt: 8.5 * AU, ap: 1, d: "saturn" },
+  { n: "Uranus", s: "Uranus", alt: 18.2 * AU, ap: 1, d: "uranus" },
+  { n: "Neptun", s: "Neptun", alt: 28.8 * AU, ap: 1, d: "neptune" },
+  { n: "Pluto", s: "Pluto", alt: 35 * AU, ap: 1, d: "pluto" },
+  { n: "Heliopause · Ende des Sonnenwinds", s: "Heliopause", alt: 122 * AU, ap: 1, d: "helio" },
+  { n: "Raumsonde Voyager 1", s: "Voyager 1", alt: 170 * AU, ap: 1, d: "voyager" },
+  { n: "Oortsche Wolke (Innenrand)", s: "Oortsche Wolke", alt: 2000 * AU, ap: 1, d: "oort" },
+  { n: "Ein Lichtjahr", s: "1 Lichtjahr", alt: LY, d: "ly" },
+  { n: "Proxima Centauri", s: "Proxima", alt: 4.24 * LY, d: "proxima" },
+  { n: "Sirius", s: "Sirius", alt: 8.6 * LY, d: "sirius" },
+  { n: "Wega", s: "Wega", alt: 25 * LY, d: "vega" },
+  { n: "Polarstern", s: "Polarstern", alt: 433 * LY, ap: 1, d: "polaris" },
+  { n: "Orionnebel", s: "Orionnebel", alt: 1344 * LY, ap: 1, d: "orion" },
+  { n: "Zentrum der Milchstrasse", s: "Milchstrasse", alt: 26000 * LY, ap: 1, d: "galcenter" },
+  { n: "Grosse Magellansche Wolke", s: "Magellan", alt: 160000 * LY, ap: 1, d: "lmc" },
+  { n: "Andromedagalaxie", s: "Andromeda", alt: 2.5e6 * LY, ap: 1, d: "andromeda" },
+  { n: "M87 · Schwarzes Loch", s: "M87", alt: 53e6 * LY, ap: 1, d: "m87" },
+  { n: "Coma-Galaxienhaufen", s: "Coma-Haufen", alt: 320e6 * LY, ap: 1, d: "coma" },
+  { n: "Quasar 3C 273", s: "Quasar", alt: 2.4e9 * LY, ap: 1, d: "quasar" },
+  { n: "Fernste bekannte Galaxien", s: "Urgalaxien", alt: 13.5e9 * LY, ap: 1, d: "farg" },
+  { n: "Kosmische Hintergrundstrahlung", s: "Urknall-Echo", alt: 13.8e9 * LY, ap: 1, d: "cmb" },
+  { n: "Rand des beobachtbaren Universums", s: "Weltrand", alt: 46.5e9 * LY, ap: 1, d: "edge" }
+];
+const LAST = STN.length - 1;
+const BEYOND = { n: "Jenseits des Horizonts", s: "Jenseits", alt: null };
+const stnAt = i => (i > LAST ? BEYOND : STN[Math.max(0, i)]);
+function altAt(p) {
+  if (p <= 0) return STN[0].alt;
+  if (p >= LAST) return STN[LAST].alt;
+  const i = Math.floor(p), t = p - i;
+  return Math.exp(lerp(Math.log(STN[i].alt), Math.log(STN[i + 1].alt), t));
+}
+const grp = n => String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+const dec = x => (x < 10 ? (Math.round(x * 10) / 10).toString().replace(".", ",") : grp(x));
+function fmtAlt(m) {
+  if (m < 1e5) return grp(m) + " m";
+  const km = m / KM;
+  if (km < 1e6) return grp(km) + " km";
+  if (m < 0.5 * AU) return dec(km / 1e6) + " Mio. km";
+  const au = m / AU;
+  if (au < 30000) return dec(au) + " AE";
+  const ly = m / LY;
+  if (ly < 1e6) return dec(ly) + " Lj";
+  if (ly < 1e9) return dec(ly / 1e6) + " Mio. Lj";
+  return dec(ly / 1e9) + " Mrd. Lj";
+}
+const stnAlt = st => (st.alt == null ? "> " + fmtAlt(STN[LAST].alt) : (st.ap ? "≈ " : "") + fmtAlt(st.alt));
+function flyAltTxt(p) {
+  if (p >= LAST + 0.999) return "> " + fmtAlt(STN[LAST].alt);
+  const i = Math.round(p);
+  if (Math.abs(p - i) < 0.002) return stnAlt(STN[clamp(i, 0, LAST)]);
+  return "≈ " + fmtAlt(altAt(p));
+}
+const flyMult = () => Math.min(5, 1 + 0.5 * Math.max(0, state.combo - 1));
+
+const SHEEP_PAL = { W: "#f6f4ec", w: "#d8d3c4", K: "#1c1c22", H: "#dcc79c", h: "#9c8558", e: "#ffffff" };
+const SHEEP = makeSprite([ // Walliser Schwarznasenschaf: schwarzes Gesicht und Ohren, Schneckenhörner, schwarze Knie und Füsse
+  "...............hHHh.....",
+  "..............hH..Hh....",
+  "....wwWWww....H.hKKKH...",
+  "..wWWWWWWWWw..HhKKKKK...",
+  ".wWWWWWWWWWWW..hKKeKKK..",
+  "wWWWWWWWWWWWWWKKKKKKKKK.",
+  "wWWWWWWWWWWWWWWKKKKKKKKK",
+  "wWWWWWWWWWWWWWWWKKKKKK..",
+  "wWWWWWWWWWWWWWWWWKKK....",
+  "wWWWWWWWWWWWWWWWWw......",
+  ".wWWWWWWWWWWWWWWw.......",
+  "..wwWWWWWWWWWWww........",
+  "...wW..wW....wW..wW.....",
+  "...KK..KK....KK..KK.....",
+  "...wW..wW....wW..wW.....",
+  "...KK..KK....KK..KK....."
+], SHEEP_PAL);
+const BAL_COL = ["#e3001b", "#f2f2f2", "#ffcf6b"], BAL_CLS = ["r", "w", "g"];
+const BAL = [["#e3001b", "#ff8a8a", "#a50013"], ["#f2f2f2", "#ffffff", "#c3c8ce"], ["#ffcf6b", "#fff1a8", "#c9982f"]].map(([X, h, d]) => makeSprite([
+  "..XXXXX..", ".XXXXXXX.", "XhhXXXXXX", "XhXXXXXXX", "XXXXXXXXX", "XXXXXXXXd", ".XXXXXXd.", "..XXXXd..", "...XXX...", "....X...."
+], { X, h, d }));
+const sheep = { p: 0, dip: 0, rot: 0, dx: 0, down: false, balloons: 3, bpos: [] };
+let camP = 0, skyParts = [], lastHudAlt = "";
+const HAYX = () => Math.round(W / 2 + 30);
+
+function skyTick(dt) {
+  const target = state.phase === "start" || state.phase === "name" ? 0 : sheep.p + sheep.dip;
+  if (state.phase === "dying") camP = target; else camP += (target - camP) * (1 - Math.pow(0.002, dt));
+  for (const pt of skyParts) { pt.vy -= pt.g * dt; pt.x += pt.vx * dt; pt.wy += pt.vy * dt; pt.life -= dt; if (pt.floor && pt.wy < 0) { pt.wy = 0; pt.vy = 0; pt.vx *= 0.5; } }
+  skyParts = skyParts.filter(pt => pt.life > 0);
+  if (!$("hud").hidden) {
+    const a = flyAltTxt(sheep.p);
+    if (a !== lastHudAlt) { lastHudAlt = a; $("alt").textContent = a; $("wp").textContent = stnAt(Math.floor(sheep.p + 1e-6)).n; }
+  }
+}
+const SKY_STOPS = [[-2, [214, 238, 250]], [0, [191, 224, 245]], [2.5, [126, 182, 226]], [4.5, [86, 147, 204]], [6.5, [40, 78, 140]], [8, [16, 30, 64]], [9.5, [6, 9, 20]],
+  [37, [6, 8, 18]], [39, [13, 8, 26]], [43, [14, 8, 22]], [44.5, [24, 11, 14]], [45.5, [40, 18, 10]], [46.5, [4, 3, 8]]];
+function skyCol(v) {
+  let i = 0; while (i < SKY_STOPS.length - 2 && v > SKY_STOPS[i + 1][0]) i++;
+  const [v0, c0] = SKY_STOPS[i], [v1, c1] = SKY_STOPS[i + 1], t = clamp((v - v0) / (v1 - v0), 0, 1);
+  const q = k => Math.round(lerp(c0[k], c1[k], t) / 5) * 5;
+  return `rgb(${q(0)},${q(1)},${q(2)})`;
+}
+// Zeichenhelfer (tief aufgelöste Szene)
+function R(x, y, w, h, c) { lctx.fillStyle = c; lctx.fillRect(Math.round(x), Math.round(y), w, h); }
+function disc(cx, cy, r, c, dark, hl) {
+  cx = Math.round(cx); cy = Math.round(cy);
+  for (let y = -r; y <= r; y++) {
+    const hw = Math.floor(Math.sqrt(r * r - y * y + r * 0.6));
+    R(cx - hw, cy + y, 2 * hw + 1, 1, c);
+    if (dark) { const sw = Math.max(1, Math.round(hw * 0.5)); R(cx + hw - sw + 1, cy + y, sw, 1, dark); }
+  }
+  if (hl) R(cx - Math.round(r * 0.55), cy - Math.round(r * 0.55), Math.max(1, r >> 2), Math.max(1, r >> 2), hl);
+}
+function glow(cx, cy, r, c, a) { lctx.globalAlpha = a; disc(cx, cy, r, c); lctx.globalAlpha = 1; }
+function spike(cx, cy, c, n) {
+  glow(cx, cy, Math.max(2, n >> 1), c, 0.18);
+  R(cx - 1, cy - 1, 3, 3, c);
+  lctx.globalAlpha = 0.7; R(cx - n, cy, 2 * n + 1, 1, c); R(cx, cy - n, 1, 2 * n + 1, c); lctx.globalAlpha = 1;
+  R(cx, cy, 1, 1, "#ffffff");
+}
+function dots(cx, cy, rx, ry, n, cols, seed, a = 0.8) {
+  lctx.globalAlpha = a;
+  for (let i = 0; i < n; i++) {
+    const ang = hash(i, seed) * Math.PI * 2, rr = Math.pow(hash(i, seed + 1), 0.7);
+    R(cx + Math.cos(ang) * rx * rr, cy + Math.sin(ang) * ry * rr, 1, 1, cols[i % cols.length]);
+  }
+  lctx.globalAlpha = 1;
+}
+function bands(cx, cy, r, cols, dark) { // Planet mit Wolkenbändern
+  cx = Math.round(cx); cy = Math.round(cy);
+  for (let y = -r; y <= r; y++) {
+    const hw = Math.floor(Math.sqrt(r * r - y * y + r * 0.6));
+    R(cx - hw, cy + y, 2 * hw + 1, 1, cols[Math.floor((y + r) / Math.max(2, r / 4)) % cols.length]);
+    const sw = Math.max(1, Math.round(hw * 0.45)); lctx.globalAlpha = 0.35; R(cx + hw - sw + 1, cy + y, sw, 1, dark); lctx.globalAlpha = 1;
+  }
+}
+function ellipsePts(cx, cy, rx, ry, front, c) { // Ring: vordere (front) oder hintere Hälfte
+  for (let k = 0; k < 120; k++) { const t = k / 120 * Math.PI * 2, s = Math.sin(t); if ((s > 0) === front) R(cx + Math.cos(t) * rx, cy + s * ry, 1, 1, c); }
+}
+function sat(x, y, body) { R(x - 2, y - 2, 5, 5, body); R(x - 9, y - 1, 6, 3, "#2c4a8b"); R(x + 4, y - 1, 6, 3, "#2c4a8b"); R(x - 3, y, 1, 1, "#c3c8ce"); R(x + 3, y, 1, 1, "#c3c8ce"); }
+function cumulus(x, y, w) { R(x, y, w, 5, "#ffffff"); R(x + 3, y - 4, w - 7, 4, "#ffffff"); R(x + 6, y - 7, Math.max(4, (w / 3) | 0), 3, "#ffffff"); R(x + 1, y + 5, w - 2, 1, "#d7e6f1"); }
+const OBJ = {
+  eagle(x, y, now) {
+    const fx = Math.round(x + Math.sin(now / 2300) * 22), up = Math.floor(now / 280) % 2, d = Math.cos(now / 2300) < 0 ? -1 : 1;
+    for (let k = 1; k <= 7; k++) { const dy = up ? -Math.min(k, 4) + (k > 5 ? 1 : 0) : Math.min(k, 3) - 1; R(fx - k, y + dy, 1, 2, "#3a2414"); R(fx + k, y + dy, 1, 2, "#3a2414"); }
+    R(fx - 3, y, 7, 2, "#4a2f1a"); R(fx + 3 * d - (d < 0 ? 1 : 0), y - 1, 2, 2, "#c9a14a"); R(fx + 5 * d, y, 1, 1, "#f2c94c"); R(fx - 5 * d - (d > 0 ? 1 : 0), y, 2, 1, "#3a2414");
+  },
+  mhorn() {},
+  clouds(x, y, now) { for (let k = 0; k < 7; k++) { const cx = ((k * W / 5 + now / 1000 * 3 * (1 + k % 3)) % (W + 60)) - 30; cumulus(cx, y + (k % 3 - 1) * 9, 18 + (k * 7) % 16); } },
+  everest(x, y) {
+    lctx.globalAlpha = 0.5; for (let xx = 0; xx < W; xx += 5) R(xx, y, 3, 1, "#ffffff"); lctx.globalAlpha = 1;
+    for (let r = 0; r < 10; r++) R(x - r, y - 10 + r, 2 * r + 1, 1, r < 3 ? "#f3f7fb" : "#857a70");
+  },
+  plane(x, y, now) {
+    const px = ((now / 45) % (W + 120)) - 60;
+    lctx.globalAlpha = 0.55; R(px - 70, y + 1, 56, 1, "#ffffff"); lctx.globalAlpha = 1;
+    R(px - 12, y, 24, 3, "#f2f2f2"); R(px + 12, y + 1, 2, 2, "#f2f2f2"); for (let k = 0; k < 8; k++) R(px - 8 + 2 * k, y + 1, 1, 1, "#5f86b0");
+    R(px - 12, y - 5, 3, 5, "#e3001b"); R(px - 11, y - 4, 1, 3, "#ffffff"); R(px - 12, y - 3, 3, 1, "#ffffff");
+    R(px - 4, y + 3, 8, 1, "#c3c8ce"); R(px - 2, y + 4, 4, 1, "#c3c8ce");
+  },
+  concorde(x, y, now) {
+    const px = W + 40 - ((now / 22) % (W + 120));
+    R(px - 14, y, 30, 2, "#f2f2f2"); R(px - 16, y + 1, 2, 1, "#f2f2f2"); R(px + 12, y - 5, 3, 5, "#e8e8e8");
+    for (let k = 0; k < 9; k++) R(px + 2 + k, y + 2, 1, 1 + (k >> 1), "#d8dde3");
+  },
+  wballoon(x, y, now) { const b = Math.round(Math.sin(now / 900) * 2); disc(x, y - 10 + b, 8, "#f4f4f4", "#cfd6dd", "#ffffff"); R(x, y - 2 + b, 1, 8, "#c3c8ce"); R(x - 2, y + 6 + b, 5, 4, "#e3a020"); },
+  meteors(x, y, now) {
+    for (let k = 0; k < 5; k++) {
+      const ph = ((now / 1500 + k * 0.23) % 1), hx = hash(k, 90) * W - ph * 70, hy = y - 24 + k * 10 + ph * 36;
+      for (let j = 0; j < 12; j++) { lctx.globalAlpha = (1 - j / 12) * (1 - ph); R(hx + j, hy - j * 0.55, 1, 1, j < 2 ? "#ffffff" : "#ffcf6b"); }
+    }
+    lctx.globalAlpha = 1;
+  },
+  karman(x, y) { for (let xx = 0; xx < W; xx += 6) R(xx, y, 3, 1, "#5fd4e8"); },
+  aurora(x, y, now) {
+    for (let xx = 0; xx < W; xx++) {
+      const h = Math.round(16 + 10 * Math.sin(xx / 9 + now / 1300) + 6 * Math.sin(xx / 4 - now / 900));
+      lctx.globalAlpha = 0.28 + 0.2 * Math.sin(xx / 13 + now / 2000); R(xx, y - h, 1, h, xx % 3 ? "#3ddc84" : "#7bffb0");
+      lctx.globalAlpha = 0.25; R(xx, y - h - 3, 1, 3, "#c46bd6");
+    }
+    lctx.globalAlpha = 1;
+  },
+  iss(x, y) {
+    R(x - 17, y, 35, 1, "#c3c8ce");
+    for (const o of [-16, -11, 8, 13]) { R(x + o, y - 7, 4, 6, "#2c4a8b"); R(x + o, y + 2, 4, 6, "#2c4a8b"); R(x + o + 1, y - 7, 1, 6, "#c9a14a"); R(x + o + 1, y + 2, 1, 6, "#c9a14a"); }
+    R(x - 4, y - 1, 9, 3, "#e8e8e8"); R(x - 1, y - 3, 3, 7, "#d8dde3"); R(x - 3, y + 2, 1, 4, "#f4f4f4");
+  },
+  hubble(x, y) { R(x - 3, y - 11, 3, 7, "#2c4a8b"); R(x - 3, y + 4, 3, 7, "#2c4a8b"); R(x - 6, y - 3, 12, 6, "#c9ccd2"); R(x - 6, y - 3, 12, 1, "#eef0f3"); R(x + 6, y - 3, 2, 6, "#3a3a44"); },
+  cheops(x, y) { R(x - 11, y - 2, 7, 4, "#2c4a8b"); R(x - 3, y - 3, 7, 6, "#e8e8e8"); R(x - 3, y - 3, 7, 1, "#c9a14a"); R(x + 4, y - 2, 3, 3, "#e3001b"); R(x + 5, y - 2, 1, 3, "#ffffff"); R(x + 4, y - 1, 3, 1, "#ffffff"); },
+  vanallen(x, y, now) {
+    for (let xx = 0; xx < W; xx++) {
+      const o = 3 * Math.sin(xx / 17 + now / 3000);
+      lctx.globalAlpha = 0.16; R(xx, y - 11 + o, 1, 22, "#b05cff"); lctx.globalAlpha = 0.22; R(xx, y - 4 + o, 1, 8, "#e07bff");
+    }
+    lctx.globalAlpha = 1;
+  },
+  gps(x, y) { sat(x, y, "#e3c060"); sat(x - 34 * Math.sign(x - W / 2 || 1), y + 10, "#e3c060"); },
+  geo(x, y, now) {
+    lctx.globalAlpha = 0.6; for (let xx = ((now / 200) % 18) - 18; xx < W; xx += 18) R(xx, y + 12, 2, 1, "#c3c8ce"); lctx.globalAlpha = 1;
+    R(x - 3, y - 6, 7, 12, "#cfd6dd"); for (let k = 0; k < 4; k++) R(x - 3, y - 5 + 3 * k, 7, 1, "#2c4a8b"); R(x, y - 9, 1, 3, "#c3c8ce");
+  },
+  moon(x, y) {
+    disc(x, y, 24, "#c9c9c4", "#97978f", "#e4e4df");
+    for (const [cx, cy, r] of [[-8, -6, 4], [6, 4, 5], [-3, 11, 3], [10, -10, 2], [-14, 6, 2]]) disc(x + cx, y + cy, r, "#a9a9a2", "#8f8f88");
+    R(x - 4, y - 31, 1, 8, "#e8e8e8"); R(x - 3, y - 31, 4, 6, "#f4f4f4"); // Sonnenwindsegel der Uni Bern (Apollo 11)
+  },
+  apollo(x, y) { R(x - 6, y - 2, 9, 5, "#cfd6dd"); R(x + 3, y - 2, 1, 5, "#e8e8e8"); R(x + 4, y - 1, 1, 3, "#e8e8e8"); R(x + 5, y, 1, 1, "#e8e8e8"); R(x - 8, y - 1, 2, 3, "#6b6873"); },
+  jwst(x, y) {
+    for (let r = 0; r < 5; r++) R(x - 14 + r, y + 3 + r, 28 - 2 * r, 1, r % 2 ? "#c46bd6" : "#9c4fb8");
+    for (let i = -1; i <= 1; i++) for (let j = -1; j <= 1; j++) R(x - 2 + i * 4, y - 6 + j * 3 + (i ? 1 : 0), 3, 2, "#e8b84a");
+  },
+  venus(x, y) { disc(x, y, 11, "#e8d7a6", "#bfae7e", "#f6ecd0"); },
+  mars(x, y) { disc(x, y, 9, "#c1440e", "#8a2f0a"); R(x - 2, y - 9, 5, 2, "#ffffff"); },
+  sun(x, y, now) { glow(x, y, 42, "#ffcf6b", 0.12); glow(x, y, 35, "#ffcf6b", 0.22); disc(x, y, 28, "#ffd23a", "#ffb02e", "#fff1a8"); if (Math.floor(now / 300) % 2) R(x + 6, y + 4, 2, 2, "#e09a20"); },
+  asteroids(x, y) {
+    for (let k = 0; k < 26; k++) { const s = 1 + Math.floor(hash(k, 62) * 3); R(hash(k, 61) * W, y + (hash(k, 63) - 0.5) * 34, s, s, k % 2 ? "#8d8279" : "#a39a8c"); }
+    disc(x, y, 5, "#a39a8c", "#7d736b");
+  },
+  jupiter(x, y) { bands(x, y, 24, ["#e8d2b0", "#c08a5a", "#d8b48a", "#b07a4a"], "#3a2414"); R(x + 6, y + 6, 7, 3, "#c1440e"); },
+  saturn(x, y) { ellipsePts(x, y, 27, 6, false, "#cdb98a"); bands(x, y, 14, ["#e3cf9a", "#d4bb80"], "#3a2414"); ellipsePts(x, y, 27, 6, true, "#e8d7a6"); ellipsePts(x, y, 22, 5, true, "#bfae7e"); },
+  uranus(x, y) { disc(x, y, 11, "#9fe3e8", "#6fb6bf"); for (let k = -16; k <= 16; k++) if (Math.abs(k) > 11) R(x + Math.round(k * 0.15), y + k, 1, 1, "#cfeef0"); },
+  neptune(x, y) { disc(x, y, 11, "#3c5fd6", "#24388a"); R(x - 4, y + 2, 4, 2, "#1b2a6b"); },
+  pluto(x, y) { disc(x, y, 6, "#c9a477", "#8a6a4a"); R(x - 1, y, 3, 2, "#f1e3c6"); R(x, y + 2, 1, 1, "#f1e3c6"); },
+  helio(x, y) {
+    for (let xx = 0; xx < W; xx++) {
+      const dy = Math.round(Math.pow((xx - W / 2) / (W / 2), 2) * 22);
+      lctx.globalAlpha = 0.07; R(xx, y + dy - 30, 1, 30, "#ffcf6b"); lctx.globalAlpha = 0.6; R(xx, y + dy, 1, 1, "#5fd4e8");
+    }
+    lctx.globalAlpha = 1;
+  },
+  voyager(x, y) { R(x + 3, y, 14, 1, "#c3c8ce"); R(x - 12, y + 2, 9, 1, "#c3c8ce"); R(x - 1, y - 1, 4, 4, "#c9a14a"); for (let k = -5; k <= 5; k++) R(x - 3 - Math.round((25 - k * k) / 10), y + k, 2, 1, "#f4f4f4"); },
+  oort(x, y, now) {
+    dots(W / 2, y, W / 2, 26, 140, ["#9fb4cf", "#cfe0ff"], 71, 0.45);
+    for (const [cx, cy] of [[x, y], [W - x, y + 14]]) { lctx.globalAlpha = 0.5; R(cx + 1, cy, 10, 1, "#9fe3e8"); R(cx + 1, cy + 1, 6, 1, "#cfeef0"); lctx.globalAlpha = 1; R(cx - 1, cy, 2, 2, "#ffffff"); }
+  },
+  ly(x, y) { for (let xx = 0; xx < W; xx += 6) R(xx, y, 3, 1, "#ffcf6b"); for (let xx = 0; xx < W; xx += 30) R(xx, y - 3, 1, 7, "#ffcf6b"); },
+  proxima(x, y) { glow(x, y, 7, "#ff6b4a", 0.3); disc(x, y, 2, "#ff8a5a"); },
+  sirius(x, y) { spike(x, y, "#e8f4ff", 9); R(x + 6, y + 4, 1, 1, "#ffffff"); },
+  vega(x, y) { spike(x, y, "#bcd8ff", 7); },
+  polaris(x, y) { spike(x, y, "#fff1c4", 7); },
+  orion(x, y) { dots(x, y, 28, 17, 170, ["#ff5c8a", "#c46bd6", "#ff9ac0", "#7fb2e0"], 81, 0.5); glow(x, y, 9, "#ffc2d3", 0.25); for (const [a, b] of [[-2, -1], [2, -2], [0, 2], [3, 1]]) R(x + a, y + b, 1, 1, "#ffffff"); },
+  galcenter(x, y) {
+    lctx.globalAlpha = 0.7;
+    for (let k = 0; k < 420; k++) { const xx = hash(k, 91) * W, w = 5 + 26 * Math.exp(-Math.pow((xx - x) / 45, 2)); R(xx, y + (hash(k, 92) - 0.5) * w, 1, 1, ["#fff1c4", "#ffcf6b", "#ffffff", "#ffd9a0"][k % 4]); }
+    lctx.globalAlpha = 0.55; for (let xx = 0; xx < W; xx++) R(xx, y + Math.round(Math.sin(xx / 21) * 2), 1, 1, "#1a0f0a"); lctx.globalAlpha = 1;
+    glow(x, y, 8, "#fff1c4", 0.35);
+  },
+  lmc(x, y) { dots(x, y, 17, 9, 110, ["#cfe0ff", "#ffffff", "#ffc2d3"], 101, 0.75); },
+  andromeda(x, y) {
+    const ct = Math.cos(-0.5), st = Math.sin(-0.5);
+    for (let k = 0; k < 260; k++) {
+      const t = hash(k, 111), arm = k % 2, ang = t * 3.4 * Math.PI + arm * Math.PI, r = t * 26 + (hash(k, 112) - 0.5) * 3;
+      const px = Math.cos(ang) * r, py = Math.sin(ang) * r * 0.36;
+      lctx.globalAlpha = 0.85 - t * 0.5; R(x + px * ct - py * st, y + px * st + py * ct, 1, 1, t < 0.25 ? "#fff1c4" : t < 0.6 ? "#e8e0ff" : "#9fb4ff");
+    }
+    lctx.globalAlpha = 1; glow(x, y, 6, "#fff1c4", 0.4); disc(x, y, 2, "#fff8e0");
+  },
+  m87(x, y) { glow(x, y, 14, "#ff8a2a", 0.15); disc(x, y, 9, "#ff8a2a"); disc(x, y + 1, 8, "#ffcf6b"); disc(x, y, 6, "#05030a"); },
+  coma(x, y) { for (let k = 0; k < 16; k++) { const gx = x + (hash(k, 121) - 0.5) * 60, gy = y + (hash(k, 122) - 0.5) * 30; glow(gx, gy, 2, "#ffe9b0", 0.35); R(gx - 1, gy, 3, 1, "#ffe9b0"); R(gx, gy, 1, 1, "#ffffff"); } },
+  quasar(x, y) { lctx.globalAlpha = 0.6; R(x, y - 22, 1, 16, "#7fb2ff"); R(x, y + 7, 1, 16, "#7fb2ff"); lctx.globalAlpha = 1; spike(x, y, "#ffffff", 7); },
+  farg(x, y) { for (let k = 0; k < 6; k++) { const gx = x + (hash(k, 131) - 0.5) * 40, gy = y + (hash(k, 132) - 0.5) * 20; glow(gx, gy, 2, "#ff6b4a", 0.4); R(gx, gy, 2, 1, "#ff8a5a"); } },
+  cmb(x, y) {
+    lctx.globalAlpha = 0.5;
+    for (let yy = -26; yy < 26; yy += 2) for (let xx = 0; xx < W; xx += 2) { const n = vnoise(xx / 7, (yy + 400) / 7); R(xx, y + yy, 2, 2, n > 0.62 ? "#ff8a2a" : n > 0.45 ? "#c46b3a" : n > 0.3 ? "#5a3aa0" : "#3c5fd6"); }
+    lctx.globalAlpha = 1;
+  },
+  edge(x, y, now) { for (let xx = 0; xx < W; xx++) { lctx.globalAlpha = 0.15; R(xx, y - 14, 1, 14, "#cfe0ff"); lctx.globalAlpha = 0.9; R(xx, y + Math.round(Math.sin(xx / 5 + now / 400) * 2), 1, 1, "#ffffff"); } lctx.globalAlpha = 1; }
+};
+const WIDE = new Set(["clouds", "karman", "aurora", "vanallen", "helio", "oort", "ly", "galcenter", "cmb", "edge", "asteroids", "meteors"]);
+function stnX(i) { const off = Math.min(W * 0.3, 90); return Math.round(W / 2 + (i % 2 ? 1 : -1) * off); }
+function drawMhorn(mx, top, base) { // Matterhorn: Gipfel auf Höhe der Station 2, Fuss auf der Alp
+  const hgt = base - top;
+  for (let y = Math.max(0, top); y < Math.min(H, base); y++) {
+    const t = y - top, u = t / hgt;
+    const left = Math.round(mx - t * 0.5 - (u > 0.55 ? (t - 0.55 * hgt) * 0.7 : 0));
+    const right = Math.round(mx + 2 + t * 0.32 + (u > 0.25 ? (t - 0.25 * hgt) * 0.25 : 0) + (u > 0.6 ? (t - 0.6 * hgt) * 0.9 : 0));
+    const ridge = Math.round(mx + t * 0.04);
+    const snow = u < 0.1;
+    R(left, y, ridge - left, 1, snow ? "#f3f7fb" : "#857a70");
+    R(ridge, y, right - ridge + 1, 1, snow ? "#c6d4e3" : "#6b6873");
+    for (let k = 0; k < 3; k++) { const h = hash(y, k + 300); if (h < 0.5 && !snow) { const xx = Math.round(lerp(left, right, hash(y, k + 310))); R(xx, y, 2 + ((h * 6) | 0), 1, xx < ridge ? (u < 0.6 ? "#f3f7fb" : "#786d64") : (u < 0.6 ? "#c6d4e3" : "#5f5c66")); } }
+  }
+}
+function drawStadel(x, g) { // Walliser Stadel auf Stelzen mit Steinplatten (gegen Mäuse)
+  x = Math.round(x);
+  for (const o of [1, 7, 13]) R(x + o, g - 5, 2, 5, "#8d8279");
+  R(x - 1, g - 7, 18, 2, "#b3a696"); R(x, g - 19, 16, 12, "#5a3a22");
+  for (let k = 0; k < 4; k++) R(x, g - 17 + k * 3, 16, 1, "#3e2414");
+  R(x - 2, g - 22, 20, 3, "#6b6873"); R(x + 1, g - 24, 14, 2, "#6b6873"); R(x + 5, g - 25, 6, 1, "#6b6873");
+}
+function drawHay(x, g, front) {
+  for (let r = front ? 6 : 0; r < 10; r++) { const hw = Math.round(Math.sqrt(Math.max(0, 100 - (10 - r) * (10 - r))) * 1.15); R(x - hw, g - 10 + r, 2 * hw + 1, 1, r % 3 ? "#e2b84a" : "#c9982f"); }
+  if (!front) for (let k = 0; k < 8; k++) R(x - 8 + Math.round(hash(k, 141) * 16), g - 9 + Math.round(hash(k, 142) * 8), 2, 1, "#fff1a8");
+}
+function drawSky(now) {
+  const L = lctx, sh = cam.shake > 0.3 ? (Math.random() - 0.5) * cam.shake : 0;
+  const baseY = Math.round(H * cam.fy + sh), cp = camP;
+  const Y = v => Math.round(baseY - (v - cp) * SP), vAt = sy => cp + (baseY - sy) / SP;
+  for (let sy = 0; sy < H; sy++) { L.fillStyle = skyCol(vAt(sy)); L.fillRect(0, sy, W, 1); }
+  // Sterne mit Parallaxe; sie erscheinen ab etwa der Concorde-Höhe
+  const sOff = cp * SP * 0.35, CELL = 7;
+  if (vAt(0) > 6) {
+    const r0 = Math.floor((sOff - (H - baseY)) / CELL) - 1, r1 = Math.ceil((sOff + baseY) / CELL) + 1;
+    for (let r = r0; r <= r1; r++) for (let c = 0; c * CELL < W; c++) {
+      const h = hash(c, r + 5000); if (h > 0.1) continue;
+      const sy = Math.round(baseY - (r * CELL - sOff) + hash(c, r + 7000) * CELL), sx = c * CELL + Math.floor(hash(c + 3, r) * CELL);
+      if (clamp((vAt(sy) - 6.5) / 3.5, 0, 1) <= hash(c + 9, r + 1)) continue;
+      L.fillStyle = h < 0.03 ? "#ffe9b0" : h < 0.05 ? "#bcd8ff" : "#ffffff"; L.fillRect(sx, sy, 1, 1);
+      if (h < 0.012 && Math.floor(now / 500 + c) % 3 === 0) { L.globalAlpha = 0.6; L.fillRect(sx - 1, sy, 3, 1); L.fillRect(sx, sy - 1, 1, 3); L.globalAlpha = 1; }
+    }
+  }
+  // Boden: ferne Ketten, Matterhorn, Alp mit Stadel, Heuhaufen und grasenden Schafen
+  const g0 = Y(0);
+  if (g0 - 2.2 * SP < H) {
+    for (let sx = 0; sx < W; sx++) {
+      const p1 = sx + 40, t1 = Math.round(g0 - (34 + 14 * Math.sin(p1 / 23) + 8 * Math.sin(p1 / 9 + 2) + 3 * Math.sin(p1 / 4.3)));
+      if (t1 < H) { R(sx, t1, 1, g0 - t1, "#a9c3d8"); R(sx, t1, 1, 3, "#e9f2f8"); }
+    }
+    drawMhorn(Math.round(W * 0.78), Y(2) - 1, g0);
+    for (let sx = 0; sx < W; sx++) {
+      const p2 = sx + 90, t2 = Math.round(g0 - (14 + 9 * Math.sin(p2 / 19 + 1) + 5 * Math.sin(p2 / 7) + 2 * Math.sin(p2 / 3.1)));
+      if (t2 < H && Math.abs(sx - W * 0.78) > (g0 - Y(2)) * 0.62) { R(sx, t2, 1, g0 - t2, "#8eadc6"); R(sx, t2, 1, 2, "#dbe8f2"); }
+    }
+    if (g0 < H) {
+      for (let y = g0; y < H; y++) R(0, y, W, 1, y === g0 ? "#9fd17a" : (y - g0) % 5 === 0 ? "#6e9e4c" : "#7fae5a");
+      for (let i = 0; i < 50; i++) { const y = g0 + 2 + ((hash(i, 42) * 40) | 0); if (y < H) R((hash(i, 41) * W) | 0, y, 1, 1, ["#ffffff", "#ffd23a", "#c86bd6"][i % 3]); }
+    }
+    drawStadel(W * 0.12, g0);
+    for (const [fx, fl] of [[W * 0.34, true], [W * 0.66, false]]) { L.save(); L.translate(Math.round(fx), g0 - SHEEP.height + 1); if (fl) { L.scale(-1, 1); L.drawImage(SHEEP, -SHEEP.width, 0); } else L.drawImage(SHEEP, 0, 0); L.restore(); }
+    drawHay(HAYX(), g0, false);
+  }
+  // Wolken der unteren Stationen
+  for (let k = 0; k < 18; k++) {
+    const v = 0.6 + hash(k, 11) * 5.2, y = Y(v); if (y < -12 || y > H + 12) continue;
+    const cx = ((hash(k, 12) * (W + 80) + now / 1000 * (1 + hash(k, 13)) * 2) % (W + 80)) - 40;
+    L.globalAlpha = 0.85; cumulus(cx, y, 10 + Math.floor(hash(k, 14) * 18)); L.globalAlpha = 1;
+  }
+  // Stationen
+  const lo = Math.max(1, Math.floor(vAt(H)) - 1), hi = Math.ceil(vAt(0)) + 1;
+  for (let i = lo; i <= hi; i++) {
+    const y = Y(i);
+    if (i > LAST) { dots(stnX(i), y, 10, 5, 40, ["#cfe0ff", "#ffffff", "#ffc2d3"], 200 + i, 0.6); continue; }
+    const f = OBJ[STN[i].d]; if (f) f(stnX(i), y, now);
+  }
+  for (const pt of skyParts) R(pt.x, baseY - (pt.wy - cp * SP), 1, 1, pt.c);
+  // Schaf mit Ballonen
+  const air = !sheep.down && state.phase !== "start" && state.phase !== "name";
+  const sx = Math.round(W / 2 + sheep.dx + (air && state.phase !== "dying" ? Math.sin(now / 1100) * 2 : 0));
+  const sy = Math.round(Y(sheep.p + sheep.dip) - (air && state.phase !== "dying" ? Math.sin(now / 520) * 1.5 : 0)) + (sheep.down ? 5 : 0);
+  const ax = sx - 2, ay = sy - 14;
+  for (let k = 0; k < sheep.balloons; k++) {
+    const bx = ax + [-9, 0, 9][k] + Math.round(Math.sin(now / 700 + k * 2) * 1.2), by = ay - [26, 32, 27][k];
+    const n = Math.max(Math.abs(bx - ax), Math.abs(by + 5 - ay));
+    for (let j = 0; j <= n; j++) R(lerp(ax, bx, j / n), lerp(ay, by + 5, j / n), 1, 1, "#e8e8e8");
+    L.drawImage(BAL[k], bx - (BAL[k].width >> 1), by - 6);
+    sheep.bpos[k] = { x: bx, wy: (baseY - by) + cp * SP };
+  }
+  L.save(); L.translate(sx, sy - (SHEEP.height >> 1) + 1);
+  const rot = sheep.down ? Math.PI : sheep.rot; if (rot) L.rotate(Math.round(rot / (Math.PI / 4)) * (Math.PI / 4));
+  L.drawImage(SHEEP, -(SHEEP.width >> 1), -(SHEEP.height >> 1)); L.restore();
+  if (sheep.down) {
+    drawHay(HAYX(), g0, true);
+    for (let k = 0; k < 3; k++) { const a = now / 300 + k * 2.1; R(sx + Math.cos(a) * 8, sy - 14 + Math.sin(a) * 2, 1, 1, "#ffe27a"); }
+  }
+  // auf den Bildschirm, dann Beschriftungen in voller Auflösung
+  ctx.imageSmoothingEnabled = false;
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.drawImage(low, 0, 0, W * S * DPR, H * S * DPR);
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  ctx.font = "16px VT323, monospace"; ctx.textBaseline = "middle"; ctx.textAlign = "left";
+  const nextI = state.phase === "start" || state.phase === "name" ? 1 : Math.floor(state.score / STEP + 1e-9) + 1;
+  for (let i = Math.max(0, lo - 1); i <= Math.min(hi, LAST); i++) {
+    const st = STN[i], d = st.d;
+    let lx, ly;
+    if (i === 0) { lx = W * 0.12; ly = Y(0) - 32; }
+    else if (d === "mhorn") { lx = W * 0.78; ly = Y(2) - 6; }
+    else { lx = WIDE.has(d) ? W * 0.5 + (i % 2 ? 1 : -1) * Math.min(W * 0.3, 90) : stnX(i); ly = Y(i) - ({ moon: 34, sun: 38, jupiter: 30, saturn: 20, galcenter: 22, cmb: 32, aurora: 34, clouds: 16, vanallen: 16, helio: 8, edge: 22 }[d] || 15); }
+    const label = `${st.n}  ${stnAlt(st)}`, tw = ctx.measureText(label).width;
+    const x = clamp(lx * S - tw / 2, 6, innerWidth - tw - 10), y = ly * S;
+    if (y < -20 || y > innerHeight + 20) continue;
+    const nx = i === nextI;
+    ctx.fillStyle = nx ? "rgba(255,92,138,.92)" : "rgba(14,26,43,.78)"; ctx.fillRect(x - 4, y - 9, tw + 8, 18);
+    ctx.fillStyle = nx ? "#2a0a16" : "#eaf3fb"; ctx.fillText(label, x, y + 1);
+  }
+  ctx.textAlign = "center";
+  bubbles = bubbles.filter(b => now - b.t0 < 1700);
+  for (const b of bubbles) {
+    const age = (now - b.t0) / 1700, bx = sx * S, by = (sy - 30) * S;
+    ctx.font = (b.big ? 30 : 22) + "px VT323, monospace"; ctx.globalAlpha = 1 - age * age;
+    ctx.fillStyle = "#0e1a2b"; ctx.fillText(b.text, bx + 2, by - age * 46 + 2);
+    ctx.fillStyle = b.color; ctx.fillText(b.text, bx, by - age * 46); ctx.globalAlpha = 1;
+  }
+}
+async function flyTo(to) {
+  const from = sheep.p, d = Math.abs(to - from);
+  await tween(clamp(700 + d * 420, 900, 3000), p => { const e = p < 0.5 ? 2 * p * p : 1 - Math.pow(-2 * p + 2, 2) / 2; sheep.p = lerp(from, to, e); });
+  sheep.p = to;
+}
+async function popBalloon() {
+  const k = sheep.balloons - 1; if (k < 0) return;
+  const b = sheep.bpos[k] || { x: W / 2, wy: sheep.p * SP + 40 };
+  sheep.balloons--;
+  sfx("pop"); flash(0.2); bubble("PENG!", "#ff6b6b", true);
+  for (let i = 0; i < 20; i++) skyParts.push({ x: b.x, wy: b.wy, vx: (Math.random() - 0.5) * 90, vy: (Math.random() - 0.3) * 80, life: 0.5 + Math.random() * 0.5, c: BAL_COL[k], g: 120 });
+  await tween(900, p => { sheep.dip = -0.35 * Math.sin(p * Math.PI); });
+  sheep.dip = 0;
+}
+async function flyFall() { // dritter Ballon geplatzt: Absturz durch alle Stationen ins Heu
+  const my = gid;
+  state.phase = "dying"; renderHud(); hideCards();
+  await animQ; if (my !== gid) return;
+  await wait(250);
+  await popBalloon(); if (my !== gid) return;
+  bubble("MÄÄÄH!", "#ffffff", true); sfx("fall");
+  const p0 = sheep.p, dx0 = sheep.dx, dx1 = HAYX() - W / 2;
+  await tween(clamp(1500 + p0 * 80, 1700, 5200), p => { sheep.p = p0 * (1 - p * p); sheep.dx = lerp(dx0, dx1, p); sheep.rot = p * Math.PI * (4 + Math.min(10, p0)); });
+  if (my !== gid) return;
+  sheep.p = 0; sheep.dx = dx1; sheep.rot = 0; sheep.down = true;
+  flash(0.5); shake(6); sfx("splat"); bubble("PLUMPS!", "#ffcf6b", true);
+  for (let i = 0; i < 40; i++) skyParts.push({ x: HAYX() + (Math.random() - 0.5) * 16, wy: 6, vx: (Math.random() - 0.5) * 70, vy: 30 + Math.random() * 70, life: 1.2 + Math.random(), c: i % 2 ? "#e2b84a" : "#fff1a8", g: 140, floor: true });
+  await wait(2600);
+  if (my === gid) showEnd();
+}
+function flyAnswer(ok, q, chosen) {
+  state.asked++;
+  let move, anim = Promise.resolve();
+  if (ok) {
+    state.right++; state.combo++; state.bestCombo = Math.max(state.bestCombo, state.combo);
+    const m = flyMult(), pts = Math.round((q.t === "mc" ? 100 : 150) * m);
+    const i0 = Math.floor(state.score / STEP + 1e-9);
+    addScore(pts);
+    const i1 = Math.floor(state.score / STEP + 1e-9), passed = [];
+    for (let i = i0 + 1; i <= i1; i++) passed.push(stnAt(i).s);
+    const uniq = passed.filter((s, k) => passed.indexOf(s) === k);
+    move = `▲ +${pts} Punkte${m > 1 ? ` (Serie ×${fmtMult(m)})` : ""}`;
+    if (uniq.length) move += ` · erreicht: ${uniq.length > 3 ? uniq[0] + " … " + uniq[uniq.length - 1] : uniq.join(", ")}`;
+    if (i1 < LAST) move += ` · nächste Station: ${STN[i1 + 1].n} in ${fmtPts((i1 + 1) * STEP - state.score)} Punkten`;
+    else move += " · jenseits des beobachtbaren Universums – einfach weiter";
+    sfx("ok"); bubble("+" + pts, "#7be08a");
+    const to = state.score / STEP;
+    anim = enqueue(() => flyTo(to));
+  } else {
+    state.combo = 0; state.balloons--; state.errors++;
+    state.wrong.push({ q, given: chosen }); state.lastWrong = { q, given: chosen };
+    if (!state.deck.includes(q)) state.deck.splice(Math.max(0, state.deck.length - 5), 0, q);
+    if (state.balloons <= 0) { state.outcome = "lose"; return flyFall(); }
+    sfx("no");
+    move = `▼ PENG – ein Ballon ist geplatzt. Noch ${state.balloons} ${state.balloons === 1 ? "Ballon" : "Ballone"}, die Serie beginnt von vorn.`;
+    anim = enqueue(() => popBalloon());
+  }
+  state.outcome = null; state.anim = anim;
+  showFeedback(ok, ok ? "✓ RICHTIG" : "✗ FALSCH", explainHtml(q, chosen, ok), move, "WEITER ▲");
+}
+
 /* ============ sound ============ */
 let actx = null, soundOn = store.get("sound", true);
 function ac() { actx = actx || new (window.AudioContext || window.webkitAudioContext)(); if (actx.state === "suspended") actx.resume(); return actx; }
@@ -1200,6 +1695,7 @@ function sfx(kind) {
       case "quest": tone(784, .06); tone(988, .06, "square", .05, .07); tone(1175, .12, "square", .05, .14); break;
       case "yodel": playJodel(); break;
       case "heli": for (let i = 0; i < 14; i++) noise(0.06, 0.07, i * 0.1, 300); break;
+      case "pop": noise(0.12, 0.3, 0, 3000); tone(1400, .08, "square", .05, 0, 300); break;
     }
   } catch (e) {}
 }
@@ -1385,7 +1881,28 @@ let selT = new Set(store.get("types", TYPES.map(t => t[0])).filter(k => TYPE_NAM
 if (!selT.size) selT = new Set(TYPES.map(t => t[0]));
 function pool() { return Q.filter(q => sel.has(q.b) && selT.has(q.t)); }
 
+const RULES = {
+  grat: [["", "Richtig:", "eine Etappe höher – 24 bis zum Gipfel"], ["dn", "Falsch:", "du rutschst zurück"], ["q", "Serien:", "bis ×3 Punkte"], ["x", "Fünfter Fehler:", "Absturz"]],
+  schaf: [["", "Richtig:", "Punkte = Höhe, alle 200 Punkte eine Station"], ["q", "Serien:", "bis ×5 – schneller hinauf"], ["dn", "Falsch:", "ein Ballon platzt, Serie weg"], ["x", "Dritter Ballon:", "Absturz – kein Gipfel, nur Höhe"]]
+};
+function setGame(g) {
+  if (!GAMES[g] || g === GAME) return;
+  GAME = g; store.set("game", g);
+  Object.assign(sheep, { p: 0, dip: 0, rot: 0, dx: 0, down: false, balloons: 3 }); camP = 0; skyParts = []; bubbles = [];
+  renderSettings();
+}
 function renderSettings() {
+  const gc = $("gameChips"); gc.innerHTML = "";
+  for (const [k, g] of Object.entries(GAMES)) {
+    const b = document.createElement("button");
+    b.className = "mod"; b.type = "button"; b.setAttribute("aria-pressed", GAME === k);
+    b.innerHTML = `<b>${esc(g.name)}</b><span>${esc(g.sub)}</span>`;
+    b.onclick = () => setGame(k);
+    gc.appendChild(b);
+  }
+  $("gameTitle").textContent = GAME === "schaf" ? "HÖHENFLUG" : "HÖRNLIGRAT";
+  $("rules").innerHTML = RULES[GAME].map(([c, b, t]) => `<li${c ? ` class="${c}"` : ""}><span><b>${b}</b> ${t}</span></li>`).join("");
+  $("goBtn").textContent = GAME === "schaf" ? "▲ ABHEBEN ▲" : "▲ AUFSTIEG BEGINNEN ▲";
   const mods = $("modChips"); mods.innerHTML = ""; mods.classList.toggle("ask", !MOD);
   for (const [k, m] of Object.entries(MODS)) {
     const b = document.createElement("button");
@@ -1431,18 +1948,40 @@ function renderSettings() {
   if (n === 0) { w.hidden = false; w.textContent = "Keine Fragen in dieser Auswahl – wähle mindestens einen Block und einen Fragetyp."; }
   else if (n < 34) { w.hidden = false; w.textContent = `${n} Fragen in dieser Auswahl – bei vielen Fehlern wiederholen sich Fragen.`; }
   else w.hidden = true;
+  if (GAME === "schaf") {
+    const bf = store.get(gk("best2"), { top: 0, score: 0 });
+    $("best").textContent = bf.top > 0 ? `${MODS[MOD].short} · Höchster Punkt bisher: ${stnAt(bf.top).n}` : `${n} Fragen bereit`;
+  } else {
   const best = store.get(mk("best2"), { pos: Z, summits: 0 });
   $("best").textContent = best.summits ? `${MODS[MOD].short} · Gipfel erreicht: ${best.summits}×` : best.pos > Z ? `${MODS[MOD].short} · Höchster Punkt bisher: ${ROUTE[best.pos].n}` : `${n} Fragen bereit`;
+  }
   if (ONLINE) return startBoard();
   localBoard();
 }
-function localBoard() { // Bestenliste dieses Geräts für das gewählte Fach
-  const list = store.get(mk("scores"), []);
-  $("boardLbl").textContent = `Bestenliste ${MODS[MOD].short} · dieses Gerät`;
+const boardTitle = where => `Bestenliste ${MODS[MOD].short}${GAME === "schaf" ? " · Höhenflug" : ""} · ${where}`;
+const collName = () => MODS[MOD].coll + (GAME === "schaf" ? "_schaf" : "");
+const hLbl = e => (GAME === "schaf" ? stnAt(e.top).s : e.win ? "Gipfel" : "Etappe " + e.top);
+function localBoard() { // Bestenliste dieses Geräts für das gewählte Fach und den gewählten Spielmodus
+  const list = store.get(gk("scores"), []);
+  $("boardLbl").textContent = boardTitle("dieses Gerät");
   $("boardBox").hidden = !list.length;
   $("board").innerHTML = boardHtml(list, null, 5);
 }
 function renderHud() {
+  $("segs").hidden = GAME === "schaf"; $("hud").classList.toggle("fly", GAME === "schaf");
+  $("livesLbl").textContent = GAME === "schaf" ? "Ballone" : "Fehler";
+  if (GAME === "schaf") {
+    const i = Math.floor(state.score / STEP + 1e-9);
+    lastHudAlt = flyAltTxt(sheep.p); $("alt").textContent = lastHudAlt; $("wp").textContent = stnAt(Math.floor(sheep.p + 1e-6)).n;
+    $("stage").textContent = i < LAST ? `▲ ${STN[i + 1].s} · ${fmtPts((i + 1) * STEP - state.score)} P.` : "Unendliche Weiten";
+    $("lives").innerHTML = [0, 1, 2].map(k => `<i class="bal${k < state.balloons ? " on " + BAL_CLS[k] : ""}"></i>`).join("");
+    $("lives").setAttribute("aria-label", `${state.balloons} von 3 Ballonen`);
+    $("streak").textContent = state.combo > 1 ? `${state.combo} in Folge` : " ";
+    $("score").textContent = fmtPts(state.score);
+    $("mult").hidden = state.combo < 2; $("mult").textContent = `SERIE ×${fmtMult(flyMult())}`;
+    $("inv").textContent = ""; updateRopeBtn();
+    return;
+  }
   const w = ROUTE[state.pos];
   let altTxt;
   if (state.pos < Z) altTxt = "< 1608 m";
@@ -1494,7 +2033,8 @@ function useRope() {
 /* ---------- Spielername ---------- */
 const NAME_B = ["Geiss", "Gämse", "Steinbock", "Murmeli", "Bartgeier", "Dohle", "Schneehase", "Alpendohle", "Bernhardiner", "Älplerin", "Bergführer", "Seilschaft", "Kuh", "Hirt"];
 const pick = a => a[Math.floor(Math.random() * a.length)];
-function randomName() { for (let i = 0; i < 20; i++) { const n = `${pick(MODS[MOD || "oc"].names)}-${pick(NAME_B)}`; if (n.length <= 18) return n; } return "Schneeziege"; }
+const NAME_S = ["Schaf", "Widder", "Lämmli", "Bock", "Böckli", "Wollknäuel", "Schwarznase", "Schäfli"];
+function randomName() { const fly = GAME === "schaf"; for (let i = 0; i < 20; i++) { const n = `${pick(MODS[MOD || "oc"].names)}-${pick(fly ? NAME_S : NAME_B)}`; if (n.length <= 18) return n; } return fly ? "Schwarznase" : "Schneeziege"; }
 function cleanName(v) { return String(v || "").replace(/[^\p{L}\p{N} .'’_-]/gu, "").replace(/\s+/g, " ").trim().slice(0, 18); }
 
 /* ---------- Online-Bestenliste (Firestore REST) ---------- */
@@ -1508,30 +2048,30 @@ async function fsPost(path, body) {
 async function onlineSubmit(e) {
   const id = Array.from(crypto.getRandomValues(new Uint8Array(10)), b => b.toString(16).padStart(2, "0")).join("");
   await fsPost(":commit", { writes: [{
-    update: { name: `projects/${ONLINE.project}/databases/(default)/documents/${MODS[MOD].coll}/${id}`, fields: { name: { stringValue: e.name }, score: { integerValue: String(e.score) }, top: { integerValue: String(e.top) }, win: { booleanValue: e.win } } },
+    update: { name: `projects/${ONLINE.project}/databases/(default)/documents/${collName()}/${id}`, fields: { name: { stringValue: e.name }, score: { integerValue: String(e.score) }, top: { integerValue: String(e.top) }, win: { booleanValue: e.win } } },
     updateTransforms: [{ fieldPath: "ts", setToServerValue: "REQUEST_TIME" }],
     currentDocument: { exists: false } }] });
   return id;
 }
 async function onlineTop(n) {
-  const res = await fsPost(":runQuery", { structuredQuery: { from: [{ collectionId: MODS[MOD].coll }], orderBy: [{ field: { fieldPath: "score" }, direction: "DESCENDING" }], limit: n } });
+  const res = await fsPost(":runQuery", { structuredQuery: { from: [{ collectionId: collName() }], orderBy: [{ field: { fieldPath: "score" }, direction: "DESCENDING" }], limit: n } });
   return res.filter(x => x.document).map(x => { const f = x.document.fields; return { id: x.document.name.split("/").pop(), name: f.name.stringValue, score: +f.score.integerValue, top: +f.top.integerValue, win: f.win.booleanValue }; });
 }
 async function onlineCount(where) {
-  const sq = { from: [{ collectionId: MODS[MOD].coll }] };
+  const sq = { from: [{ collectionId: collName() }] };
   if (where != null) sq.where = { fieldFilter: { field: { fieldPath: "score" }, op: "GREATER_THAN", value: { integerValue: String(where) } } };
   const res = await fsPost(":runAggregationQuery", { structuredAggregationQuery: { structuredQuery: sq, aggregations: [{ alias: "n", count: {} }] } });
   return +res[0].result.aggregateFields.n.integerValue;
 }
-let topCache = {}; // je Fach: { t, l }
+let topCache = {}; // je Fach und Spielmodus: { t, l }
 function startBoard() {
   if (!ONLINE || !MOD) return;
-  const m = MOD, c = topCache[m];
-  const paint = l => { $("boardLbl").textContent = `Bestenliste ${MODS[m].short} · alle Spieler`; $("boardBox").hidden = !l.length; $("board").innerHTML = boardHtml(l, null, 5); };
+  const m = MOD, g = GAME, key = m + "." + g, c = topCache[key], same = () => state.phase === "start" && MOD === m && GAME === g;
+  const paint = l => { $("boardLbl").textContent = boardTitle("alle Spieler"); $("boardBox").hidden = !l.length; $("board").innerHTML = boardHtml(l, null, 5); };
   if (c && Date.now() - c.t < 60000) return paint(c.l);
   $("boardBox").hidden = true;
-  onlineTop(5).then(l => { topCache[m] = { t: Date.now(), l }; if (state.phase === "start" && MOD === m) paint(l); })
-    .catch(() => { if (state.phase === "start" && MOD === m) localBoard(); });
+  onlineTop(5).then(l => { topCache[key] = { t: Date.now(), l }; if (same()) paint(l); })
+    .catch(() => { if (same()) localBoard(); });
 }
 async function endBoardOnline(entry) {
   const box = $("endBoard"), rt = $("rankTxt");
@@ -1539,21 +2079,21 @@ async function endBoardOnline(entry) {
   try {
     const id = await onlineSubmit(entry);
     const [top, above, total] = await Promise.all([onlineTop(10), onlineCount(entry.score), onlineCount(null)]);
-    delete topCache[MOD];
+    delete topCache[MOD + "." + GAME];
     const rank = above + 1;
     let html = boardHtml(top, id, 10);
-    if (!top.some(e => e.id === id)) html += `<li class="gap"><span class="r">…</span></li><li class="me"><span class="r">${rank}.</span><span class="n">${esc(entry.name)}</span><span class="h">${entry.win ? "Gipfel" : "Etappe " + entry.top}</span><span class="p">${fmtPts(entry.score)}</span></li>`;
+    if (!top.some(e => e.id === id)) html += `<li class="gap"><span class="r">…</span></li><li class="me"><span class="r">${rank}.</span><span class="n">${esc(entry.name)}</span><span class="h">${esc(hLbl(entry))}</span><span class="p">${fmtPts(entry.score)}</span></li>`;
     box.innerHTML = html;
     rt.textContent = `Du bist auf Platz ${rank} von ${total}`;
   } catch (err) {
     console.warn(err);
-    const l = store.get(mk("scores"), []);
+    const l = store.get(gk("scores"), []);
     box.innerHTML = boardHtml(l, entry.id, 5);
-    $("endBoardLbl").textContent = `Bestenliste ${MODS[MOD].short} · dieses Gerät`; rt.textContent = "Online gerade nicht erreichbar";
+    $("endBoardLbl").textContent = boardTitle("dieses Gerät"); rt.textContent = "Online gerade nicht erreichbar";
   }
 }
 function boardHtml(list, meId, n) {
-  return list.slice(0, n).map((e, i) => `<li class="${e.id === meId ? "me" : ""}"><span class="r">${i + 1}.</span><span class="n">${esc(e.name)}</span><span class="h">${e.win ? "Gipfel" : "Etappe " + e.top}</span><span class="p">${fmtPts(e.score)}</span></li>`).join("");
+  return list.slice(0, n).map((e, i) => `<li class="${e.id === meId ? "me" : ""}"><span class="r">${i + 1}.</span><span class="n">${esc(e.name)}</span><span class="h">${esc(hLbl(e))}</span><span class="p">${fmtPts(e.score)}</span></li>`).join("");
 }
 function show(which) {
   for (const [id, k] of [["startCard", "start"], ["qCard", "q"], ["endCard", "end"], ["meetCard", "meet"], ["miniCard", "mini"], ["tipsyCard", "tipsy"], ["nameCard", "name"]]) $(id).hidden = which !== k;
@@ -1568,7 +2108,8 @@ function startGame() {
   const nm = cleanName($("startName").value) || randomName();
   $("startName").value = nm; store.set("name", nm); state.name = nm;
   stopAnthem(); stopHutMusic(true); cer = null; state.scene = "mountain"; state.mini = null; hutParts = []; hutPops = [];
-  Object.assign(state, { regaUses: 0, score: 0, combo: 0, ropeQ: false, pos: Z, errors: 0, maxErr: 5, ropes: 0, streak: 0, asked: 0, right: 0, wrong: [], deck: shuffle(pool()), swissDeck: shuffle(SWISS), maxPos: Z, enc: planEncounters(), quest: null, lastWrong: null, outcome: null, meet: null, anim: null });
+  Object.assign(state, { regaUses: 0, score: 0, combo: 0, bestCombo: 0, balloons: 3, ropeQ: false, pos: Z, errors: 0, maxErr: 5, ropes: 0, streak: 0, asked: 0, right: 0, wrong: [], deck: shuffle(pool()), swissDeck: shuffle(SWISS), maxPos: Z, enc: GAME === "schaf" ? [] : planEncounters(), quest: null, lastWrong: null, outcome: null, meet: null, anim: null });
+  Object.assign(sheep, { p: 0, dip: 0, rot: 0, dx: 0, down: false, balloons: 3 }); skyParts = [];
   Object.assign(goat, { x: ROUTE[Z].x, rot: 0, flip: false, hop: 0, airY: null, dead: null, hidden: false, ride: false, frame: 0, helmet: true });
   flag = false; parts = []; rocks = []; decals = []; bubbles = []; anims = []; animQ = Promise.resolve(); train = null; heli = null; helmetObj = null; boulder = null; deathCrev = null;
   camMode = "follow"; sfx("step");
@@ -1713,6 +2254,7 @@ function answer(choice) {
   }
   state.phase = "fb"; updateRopeBtn();
   if (state.quest) return questAnswer(ok, q, chosenOrig);
+  if (GAME === "schaf") return flyAnswer(ok, q, chosenOrig);
   state.asked++;
   let move = "", outcome = null, anim = Promise.resolve();
   if (ok) {
@@ -1845,39 +2387,49 @@ async function next() {
 }
 function showEnd() {
   state.phase = "end";
-  const win = state.outcome === "win";
-  const best = store.get(mk("best2"), { pos: Z, summits: 0 });
-  best.pos = Math.max(best.pos, state.maxPos); if (win) best.summits++;
-  store.set(mk("best2"), best);
+  const fly = GAME === "schaf", win = !fly && state.outcome === "win";
+  const top = fly ? Math.floor(state.score / STEP + 1e-9) : Math.max(0, state.maxPos - Z), st = stnAt(top);
+  if (fly) {
+    const bf = store.get(gk("best2"), { top: 0, score: 0 });
+    bf.top = Math.max(bf.top, top); bf.score = Math.max(bf.score, state.score); store.set(gk("best2"), bf);
+  } else {
+    const best = store.get(mk("best2"), { pos: Z, summits: 0 });
+    best.pos = Math.max(best.pos, state.maxPos); if (win) best.summits++;
+    store.set(mk("best2"), best);
+  }
   const t = $("endTitle");
   t.className = "endtitle " + (win ? "win" : "lose");
-  t.textContent = win ? "GIPFEL · 4478 m" : (goat.dead === "crevasse" ? "ABSTURZ IN DIE GLETSCHERSPALTE" : "VON DER STEINLAWINE ERSCHLAGEN");
-  $("endText").textContent = win
+  t.textContent = fly ? "ABSTURZ · WEICH IM HEU" : win ? "GIPFEL · 4478 m" : (goat.dead === "crevasse" ? "ABSTURZ IN DIE GLETSCHERSPALTE" : "VON DER STEINLAWINE ERSCHLAGEN");
+  $("endText").textContent = fly
+    ? `Drei Ballone geplatzt. Höchster Punkt: ${st.n} (${stnAlt(st)}). Ein Schwarznasenschaf landet zum Glück weich – lies nach, woran es lag, und dann gleich wieder hinauf.`
+    : win
     ? "Die Schneeziege steht auf dem Schweizer Gipfel des Matterhorns. Für den Abstieg braucht man so viel Zeit wie für den Aufstieg – für heute reicht der Ausblick."
     : `${state.maxErr} Fehler. Höchster erreichter Punkt: ${ROUTE[state.maxPos].n}. Lies nach, woran es lag – dann gleich wieder hinauf.`;
   const pct = state.asked ? Math.round(100 * state.right / state.asked) : 0;
-  const list = store.get(mk("scores"), []), entry = { id: Date.now(), name: state.name || store.get("name", "Schneeziege"), score: state.score, top: Math.max(0, state.maxPos - Z), win, date: new Date().toISOString().slice(0, 10) };
+  const list = store.get(gk("scores"), []), entry = { id: Date.now(), name: state.name || store.get("name", fly ? "Schwarznase" : "Schneeziege"), score: state.score, top, win, date: new Date().toISOString().slice(0, 10) };
   list.push(entry); list.sort((a, b) => b.score - a.score);
-  const keep = list.slice(0, 30); store.set(mk("scores"), keep);
+  const keep = list.slice(0, 30); store.set(gk("scores"), keep);
   const rank = keep.findIndex(e => e.id === entry.id) + 1;
   $("endScore").textContent = `${fmtPts(state.score)} Punkte`;
   $("endName").innerHTML = `${MODS[MOD].short} · als <b>${esc(entry.name)}</b>`;
-  $("endBoardLbl").textContent = `Bestenliste ${MODS[MOD].short} · ${ONLINE ? "alle Spieler" : "dieses Gerät"}`;
+  $("endBoardLbl").textContent = boardTitle(ONLINE ? "alle Spieler" : "dieses Gerät");
   if (ONLINE) endBoardOnline(entry);
   else { $("rankTxt").textContent = rank ? `Du bist auf Platz ${rank}` : "nicht in den Top 30"; $("endBoard").innerHTML = boardHtml(keep, entry.id, 5); }
-  $("endStats").innerHTML = [["Fragen", state.asked], ["Richtig", state.right], ["Quote", pct + " %"], ["Höchste Etappe", Math.max(0, state.maxPos - Z) + " / 24"]]
+  $("endStats").innerHTML = (fly ? [["Richtig", `${state.right} / ${state.asked}`], ["Quote", pct + " %"], ["Beste Serie", state.bestCombo], ["Höchster Punkt", esc(st.s)]]
+    : [["Fragen", state.asked], ["Richtig", state.right], ["Quote", pct + " %"], ["Höchste Etappe", Math.max(0, state.maxPos - Z) + " / 24"]])
     .map(([k, v]) => `<div class="stat"><span class="lbl">${k}</span><b>${v}</b></div>`).join("");
   const L = $("lesson");
   if (!win && state.lastWrong) {
     const { q, given } = state.lastWrong;
     L.hidden = false;
-    L.innerHTML = `<span class="lbl">Daran bist du abgestürzt</span><div class="qtext" style="font-size:22px">${fmt(q.q)}</div>${figHtml(q.qfig)}<div class="expl">${explainHtml(q, given, false)}</div>`;
+    L.innerHTML = `<span class="lbl">${fly ? "Daran ist der letzte Ballon geplatzt" : "Daran bist du abgestürzt"}</span><div class="qtext" style="font-size:22px">${fmt(q.q)}</div>${figHtml(q.qfig)}<div class="expl">${explainHtml(q, given, false)}</div>`;
   } else L.hidden = true;
   const others = win ? state.wrong : state.wrong.slice(0, -1);
   const rb = $("reviewBox");
   rb.hidden = !others.length; rb.open = false;
   $("reviewSum").textContent = `${win ? "Zum Wiederholen" : "Die anderen Fehler"}: ${others.length} Frage${others.length === 1 ? "" : "n"} mit Erklärung`;
   $("review").innerHTML = others.map(({ q }) => `<li><span class="rq">${fmt(q.q)}</span>${figHtml(q.qfig)}${solHtml(q)}${q.why ? `<span>${fmt(q.why)}</span>` : ""}${figHtml(q.fig)}</li>`).join("");
+  $("againBtn").textContent = fly ? "▲ NEUER FLUG" : "▲ NEUER AUFSTIEG";
   show("end");
   $("endCard").scrollTop = 0;
   $("againBtn").focus({ preventScroll: true });
@@ -2057,6 +2609,7 @@ function toMenu() {
   stopAnthem(); cer = null; $("skipBtn").hidden = true; $("anthemTxt").hidden = true; state.scene = "mountain"; state.mini = null;
   state.phase = "start"; state.quest = null; camMode = "attract"; renderSettings(); show("start");
   Object.assign(goat, { x: ROUTE[Z].x, rot: 0, flip: false, hop: 0, airY: null, dead: null, hidden: false, ride: false, helmet: true });
+  Object.assign(sheep, { p: 0, dip: 0, rot: 0, dx: 0, down: false, balloons: 3 }); skyParts = []; bubbles = [];
   state.pos = Z; state.enc = []; flag = false; decals = []; rocks = []; anims = []; animQ = Promise.resolve(); heli = null; train = null; helmetObj = null; boulder = null; deathCrev = null;
 }
 
@@ -2064,6 +2617,11 @@ function toMenu() {
 $("goBtn").onclick = askName;
 function askName() {
   state.phase = "name";
+  const fly = GAME === "schaf";
+  $("nameEyebrow").textContent = fly ? "Alp im Oberwallis · Hirtenbuch" : "Hörnlihütte · Tourenbuch";
+  $("nameQ").textContent = fly ? "Wer fliegt heute?" : "Wer klettert heute?";
+  $("nameTxt").textContent = `Trag deinen Namen ins ${fly ? "Hirtenbuch" : "Tourenbuch"} ein – mit ihm erscheinst du am Schluss in der Bestenliste aller Spieler. Lässt du das Feld leer, bekommst du einen zufälligen Chemie-Namen.`;
+  $("nameGo").textContent = fly ? "▲ ABHEBEN" : "▲ LOS GEHT'S";
   if (!$("startName").value) $("startName").value = store.get("name", "");
   show("name"); $("startName").focus({ preventScroll: true }); $("startName").select();
 }
@@ -2100,7 +2658,7 @@ document.addEventListener("keydown", e => {
 setMod(store.get("mod", null)); // letztes Fach vorwählen; beim ersten Besuch wird gefragt
 renderSettings(); show("start"); renderHud();
 requestAnimationFrame(frame);
-window.__hg = location.hash === "#test" ? { startCeremony, startRaclette, regaRescue, state, goat, ROUTE, walkTo, XT, solHtml, pool, renderHud, fallIntoCrevasse, crushedByBoulder, slideBack, rockfall, trainTo, maybeEncounter, nextQ, cam, leaveHut, drinkWine, randomName, showEnd, setMod, renderSettings, startGame, answer, MODS, checkInput, parseNum, norm, get MOD() { return MOD; } } : undefined;
+window.__hg = location.hash === "#test" ? { startCeremony, startRaclette, regaRescue, state, goat, ROUTE, walkTo, XT, solHtml, pool, renderHud, fallIntoCrevasse, crushedByBoulder, slideBack, rockfall, trainTo, maybeEncounter, nextQ, cam, leaveHut, drinkWine, randomName, showEnd, setMod, renderSettings, startGame, answer, MODS, checkInput, parseNum, norm, get MOD() { return MOD; }, setGame, sheep, STN, STEP, flyAltTxt, fmtAlt, flyFall, popBalloon, get GAME() { return GAME; }, get camP() { return camP; }, set camP(v) { camP = v; } } : undefined;
 })();
 </script>
 
