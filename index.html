@@ -1166,7 +1166,7 @@ const STN = [ // n: Name, s: Kurzname (Bestenliste/Auswertung), alt: Höhe bzw. 
   { n: "Höhe des Mount Everest", s: "Everest", alt: 8849, d: "everest" },
   { n: "Verkehrsflugzeug", s: "Flugzeug", alt: 11000, ap: 1, d: "plane" },
   { n: "Concorde", s: "Concorde", alt: 18000, ap: 1, d: "concorde" },
-  { n: "Wetterballon platzt", s: "Wetterballon", alt: 35 * KM, ap: 1, d: "wballoon" },
+  { n: "Wetterballon von MeteoSchweiz (Payerne)", s: "Wetterballon", alt: 25 * KM, ap: 1, d: "wballoon" },
   { n: "Sternschnuppen verglühen", s: "Meteore", alt: 85 * KM, ap: 1, d: "meteors" },
   { n: "Kármán-Linie · Grenze zum Weltraum", s: "Kármán-Linie", alt: 100 * KM, d: "karman" },
   { n: "Polarlicht", s: "Polarlicht", alt: 120 * KM, ap: 1, d: "aurora" },
@@ -1362,10 +1362,7 @@ const OBJ = {
   },
   mhorn() {},
   clouds(x, y, now) { for (let k = 0; k < 7; k++) { const cx = ((k * W / 5 + now / 1000 * 3 * (1 + k % 3)) % (W + 60)) - 30; cumulus(cx, y + (k % 3 - 1) * 9, 18 + (k * 7) % 16); } },
-  everest(x, y) {
-    lctx.globalAlpha = 0.5; for (let xx = 0; xx < W; xx += 5) R(xx, y, 3, 1, "#ffffff"); lctx.globalAlpha = 1;
-    for (let r = 0; r < 10; r++) R(x - r, y - 10 + r, 2 * r + 1, 1, r < 3 ? "#f3f7fb" : "#857a70");
-  },
+  everest(x, y) { lctx.globalAlpha = 0.55; for (let xx = 0; xx < W; xx += 5) R(xx, y, 3, 1, "#ffffff"); lctx.globalAlpha = 1; }, // reine Höhenmarke
   plane(x, y, now) {
     const px = ((now / 45) % (W + 120)) - 60;
     lctx.globalAlpha = 0.55; R(px - 70, y + 1, 56, 1, "#ffffff"); lctx.globalAlpha = 1;
@@ -1512,6 +1509,61 @@ function drawHay(x, g, sq = 0, fromY = -1e9) { // Heuhaufen als Kuppel; sq = Sta
     for (let k = 0; k < 3; k++) { const h = hash(r, k + 150); if (h < 0.6 && hw > 2) R(x - hw + Math.round(hash(r, k + 160) * 2 * hw), y, 2 + ((h * 4) | 0), 1, h < 0.3 ? "#fff1a8" : "#b8862a"); }
   }
 }
+/* Walliser Alp: Lärchen, Kapelle, Holzhaus, Trockenmauer, Fahne, Alpenblumen */
+function drawLarch(x, g, h) {
+  x = Math.round(x); R(x, g - 3, 1, 3, "#4a2f1a");
+  for (let r = 0; r < h; r++) {
+    const w = Math.round((r / h) * (h * 0.32)) + (r % 4 === 3 ? -1 : 0);
+    R(x - w, g - 3 - h + r, 2 * w + 1, 1, r % 4 === 0 ? "#4f8a4a" : r % 3 === 0 ? "#2f5a3a" : "#3c7046");
+  }
+}
+function drawForest(g) { // Lärchen-/Arvenwald am Rand der Alp, an den Seiten dichter
+  for (let x = -2; x < W + 2; x += 3) {
+    const side = Math.min(1, Math.abs(x - W / 2) / (W * 0.32)), hv = hash(x, 431);
+    if (hv > 0.25 + side * 0.65) continue;
+    const h = 4 + Math.round(hash(x, 432) * 5 + side * 4);
+    for (let r = 0; r < h; r++) { const w = r >> 1; R(x - w, g - h + r, 2 * w + 1, 1, hv < 0.15 ? "#2a5034" : "#33603d"); }
+  }
+}
+function drawChapel(x, g) { // weisse Bergkapelle mit Glockentürmchen
+  x = Math.round(x);
+  R(x, g - 11, 13, 11, "#f2efe8"); R(x, g - 11, 13, 1, "#d8d2c5");
+  for (let r = 0; r < 5; r++) R(x - 1 + r, g - 16 + r, 15 - 2 * r, 1, "#6b6873");
+  R(x + 5, g - 6, 3, 6, "#5a3a22"); R(x + 5, g - 7, 3, 1, "#3e2414");
+  R(x + 10, g - 20, 4, 9, "#f2efe8"); R(x + 11, g - 18, 2, 2, "#3a3a44");
+  R(x + 9, g - 22, 6, 2, "#6b6873"); R(x + 11, g - 25, 2, 3, "#6b6873"); R(x + 12, g - 28, 1, 3, "#c9a14a"); R(x + 11, g - 27, 3, 1, "#c9a14a");
+}
+function drawChalet(x, g) { // Walliser Holzhaus: gemauerter Sockel, sonnengebräuntes Lärchenholz, Steinplattendach
+  x = Math.round(x);
+  R(x, g - 6, 22, 6, "#e3ddd0"); R(x + 3, g - 4, 3, 4, "#4a2f1a");
+  R(x, g - 17, 22, 11, "#5a3a22"); for (let k = 0; k < 5; k++) R(x, g - 16 + k * 2, 22, 1, "#3e2414");
+  for (const wx of [x + 4, x + 14]) { R(wx, g - 14, 4, 4, "#f3d27a"); R(wx - 2, g - 14, 2, 4, "#c8102e"); R(wx + 4, g - 14, 2, 4, "#c8102e"); R(wx, g - 12, 4, 1, "#5a3a22"); }
+  for (let r = 0; r < 8; r++) { const w = Math.round(4 + r * 1.3); R(x + 11 - w, g - 25 + r, 2 * w, 1, r % 2 ? "#5f5c66" : "#76727c"); }
+  R(x - 2, g - 18, 26, 1, "#5f5c66");
+  R(x + 16, g - 28, 3, 5, "#8d8279");
+}
+function drawWall(x0, x1, g) { // Trockenmauer
+  for (let x = Math.round(x0); x < x1; x += 3) { const h = hash(x, 451); R(x, g - 3, 3, 3, h < 0.33 ? "#a39a8c" : h < 0.66 ? "#8d8279" : "#b3a696"); if (h < 0.5) R(x + 1, g - 4, 2, 1, "#a39a8c"); }
+}
+function drawFlagVS(x, g, now) { // Walliser Fahne: weiss/rot mit 13 Sternen in den Gegenfarben
+  x = Math.round(x); R(x, g - 30, 1, 30, "#c3c8ce"); R(x, g - 31, 1, 1, "#c9a14a");
+  const wave = Math.floor(now / 300) % 2, fy = g - 30;
+  for (let c = 0; c < 14; c++) {
+    const dy = wave ? (c > 6 && c < 11 ? 1 : 0) : (c > 3 && c < 8 ? 1 : 0), red = c >= 7;
+    R(x + 1 + c, fy + dy, 1, 9, red ? "#e3001b" : "#f4f4f4");
+    for (let k = 0; k < 9; k++) if ((c * 7 + k * 3) % 5 === 0 && k > 0 && k < 8 && c % 2 === 1) R(x + 1 + c, fy + dy + k, 1, 1, red ? "#f4f4f4" : "#e3001b");
+  }
+}
+function drawFlowers(g) { // Grasbüschel, Edelweiss, Enzian, Alpenrosen
+  for (let i = 0; i < 70; i++) {
+    const x = Math.round(hash(i, 41) * W), y = g + 3 + Math.round(hash(i, 42) * 34); if (y >= H) continue;
+    const t = hash(i, 43);
+    if (t < 0.45) { R(x, y - 2, 1, 2, "#5f8f43"); R(x + 2, y - 1, 1, 1, "#5f8f43"); }
+    else if (t < 0.62) { R(x, y - 1, 1, 2, "#4f7a38"); R(x - 1, y - 3, 3, 1, "#ffffff"); R(x, y - 4, 1, 3, "#ffffff"); R(x, y - 3, 1, 1, "#f2d36b"); } // Edelweiss
+    else if (t < 0.8) { R(x, y - 1, 1, 2, "#4f7a38"); R(x - 1, y - 4, 3, 2, "#2456c8"); R(x, y - 5, 1, 1, "#3d6fe0"); } // Enzian
+    else { R(x - 2, y - 2, 5, 2, "#3f6b35"); R(x - 1, y - 3, 1, 1, "#e0457b"); R(x + 1, y - 3, 1, 1, "#e0457b"); R(x, y - 2, 1, 1, "#f06a96"); } // Alpenrose
+  }
+}
 function drawFork(x, g) { // Heugabel lehnt am Haufen
   for (let k = 0; k < 24; k++) R(x + Math.round(k * 0.45), g - 1 - k, 1, 1, "#7a4e2b");
   const tx = x + 11, ty = g - 26; R(tx - 2, ty, 5, 1, "#9aa0a8"); for (const o of [-2, 0, 2]) R(tx + o, ty - 4, 1, 4, "#9aa0a8");
@@ -1545,11 +1597,18 @@ function drawSky(now) {
       const p2 = sx + 90, t2 = Math.round(g0 - (14 + 9 * Math.sin(p2 / 19 + 1) + 5 * Math.sin(p2 / 7) + 2 * Math.sin(p2 / 3.1)));
       if (t2 < H && Math.abs(sx - W * 0.78) > (g0 - Y(2)) * 0.62) { R(sx, t2, 1, g0 - t2, "#8eadc6"); R(sx, t2, 1, 2, "#dbe8f2"); }
     }
+    drawForest(g0);
     if (g0 < H) {
-      for (let y = g0; y < H; y++) R(0, y, W, 1, y === g0 ? "#9fd17a" : (y - g0) % 5 === 0 ? "#6e9e4c" : "#7fae5a");
-      for (let i = 0; i < 50; i++) { const y = g0 + 2 + ((hash(i, 42) * 40) | 0); if (y < H) R((hash(i, 41) * W) | 0, y, 1, 1, ["#ffffff", "#ffd23a", "#c86bd6"][i % 3]); }
+      for (let y = g0; y < H; y++) R(0, y, W, 1, y === g0 ? "#9fd17a" : y - g0 < 3 ? "#8cc068" : "#7fae5a");
+      for (let i = 0; i < 260; i++) { const y = g0 + 3 + Math.round(hash(i, 44) * 60); if (y < H) R(Math.round(hash(i, 45) * W), y, 2, 1, i % 2 ? "#74a352" : "#88b964"); } // Wiesentextur
+      drawFlowers(g0);
     }
-    drawStadel(W * 0.12, g0);
+    drawChapel(W * 0.025, g0); drawLarch(W * 0.085, g0, 20);
+    drawStadel(W * 0.12, g0); drawLarch(W * 0.19, g0, 15);
+    drawWall(W * 0.27, W * 0.42, g0); drawFlagVS(W * 0.32, g0, now);
+    drawWall(W * 0.58, W * 0.7, g0);
+    { const cw = NPC_SPR.cow.c; L.drawImage(cw, Math.round(W * 0.64 - cw.width / 2), g0 - cw.height + 1); } // Eringer Kuh
+    drawChalet(W * 0.86, g0); drawLarch(W * 0.965, g0, 22);
     for (const [fx, fl] of [[W * 0.24, true], [W * 0.76, false]]) { L.save(); L.translate(Math.round(fx), g0 - SHEEP.height + 1); if (fl) { L.scale(-1, 1); L.drawImage(SHEEP, -SHEEP.width, 0); } else L.drawImage(SHEEP, 0, 0); L.restore(); }
     drawFork(HAYX() + HAY_W - 6, g0);
     drawHay(HAYX(), g0, sheep.squash);
