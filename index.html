@@ -58,11 +58,6 @@ button{cursor:pointer}
 .seg.cur{box-shadow:inset 0 0 0 2px var(--cyan)}
 .prog .lbl{color:#24405e;font-size:13px;text-shadow:0 1px 0 rgba(255,255,255,.5)}
 .inv{font-size:15px;color:var(--gold)}
-#rundflug{position:fixed;left:50%;bottom:14px;transform:translateX(-50%);z-index:40;width:min(640px,calc(100% - 24px));background:rgba(14,26,43,.86);color:#eaf3fb;border-radius:12px;padding:10px 12px;font-family:var(--read);font-size:14px;box-shadow:0 4px 18px rgba(0,0,0,.35)}
-#rundflug .rt{font-weight:600;margin-bottom:8px;text-align:center}
-#rundflug .rb{display:flex;flex-wrap:wrap;gap:6px;justify-content:center}
-#rundflug button,#rundflug a{font:inherit;font-size:13px;background:#24364f;color:#eaf3fb;border:1px solid #3d5675;border-radius:8px;padding:6px 10px;cursor:pointer;text-decoration:none}
-#rundflug button:hover,#rundflug a:hover{background:#30486a}
 body.fly #qCard{max-height:min(55vh,600px)} /* Höhenflug: mehr Himmel über dem Antwortkasten */
 .hud.fly .prog .lbl{background:rgba(14,26,43,.85);color:var(--ink);padding:1px 7px;text-shadow:none}
 @media (max-width:560px){.hud.fly .prog .lbl{letter-spacing:.06em;font-size:12px;white-space:nowrap;max-width:34vw;overflow:hidden;text-overflow:ellipsis}.hud.fly .panel .big{font-size:18px}}
@@ -1175,7 +1170,7 @@ const STN = [ // n: Name, s: Kurzname (Bestenliste/Auswertung), alt: Höhe bzw. 
   { n: "Wolkendecke", s: "Wolken", alt: 6000, ap: 1, d: "clouds" },
   { n: "Verkehrsflugzeug", s: "Flugzeug", alt: 11000, ap: 1, d: "plane" },
   { n: "Concorde", s: "Concorde", alt: 18000, ap: 1, d: "concorde" },
-  { n: "Ozonloch · gestiftet von FCKW-Spraydosen", s: "Ozonloch", alt: 20 * KM, ap: 1, d: "ozone" },
+  { n: "Ozonloch · 1 Cl• zerstört bis 100 000 O₃", s: "Ozonloch", alt: 20 * KM, ap: 1, d: "ozone" },
   { n: "Wetterballon von MeteoSchweiz (Payerne)", s: "Wetterballon", alt: 25 * KM, ap: 1, d: "wballoon" },
   { n: "Sternschnuppen verglühen", s: "Meteore", alt: 85 * KM, ap: 1, d: "meteors" },
   { n: "Kármán-Linie · Grenze zum Weltraum", s: "Kármán-Linie", alt: 100 * KM, d: "karman" },
@@ -1404,19 +1399,47 @@ const OBJ = {
     if (t < 0.55) bone(fx, y + 4);
     else { const f = (t - 0.55) / 0.45, bx = fx - d * f * 6; lctx.globalAlpha = 1 - f * 0.8; bone(bx, y + 4 + f * f * 70); lctx.globalAlpha = 1; }
   },
-  ozone(x, y, now) { // Ozonschicht mit Loch; eine Spraydose sprüht FCKW, Chlorradikale (grün) nagen am Rand
-    const hc = W * 0.5 + Math.sin(now / 5000) * 10, hw = 34 + Math.sin(now / 1700) * 3;
+  ozone(x, y, now) { // Ozonschicht mit Loch und katalytischem Ozonabbau nach Zelder HG 7 (Folien 28/31):
+    // CF₂Cl₂ + hν → CF₂Cl• + Cl• · Cl• + O₃ → ClO• + O₂ · ClO• + O → Cl• + O₂ (Cl• wird regeneriert)
+    const hc = W * 0.5 + Math.sin(now / 5000) * 8, hw = 32, by = y + 4;
     for (let xx = 0; xx < W; xx++) {
       const e = Math.abs(xx - hc) - hw - hash(xx, 17) * 6; if (e < 0) continue;
       const a = clamp(e / 14, 0.15, 1);
-      lctx.globalAlpha = 0.3 * a; R(xx, y - 3, 1, 14, "#8f7bff"); lctx.globalAlpha = 0.5 * a; R(xx, y + 2, 1, 4, "#b9a8ff");
+      lctx.globalAlpha = 0.28 * a; R(xx, y - 3, 1, 14, "#8f7bff"); lctx.globalAlpha = 0.45 * a; R(xx, y + 2, 1, 4, "#b9a8ff");
     }
     lctx.globalAlpha = 1;
-    const cx = Math.round(hc - hw - 30), cy = y + 26; // Spraydose
-    R(cx, cy - 8, 6, 11, "#e3001b"); R(cx, cy - 4, 6, 3, "#ffffff"); R(cx + 1, cy - 10, 4, 2, "#c3c8ce"); R(cx + 2, cy - 12, 2, 2, "#3a3d44");
-    for (let k = 0; k < 22; k++) { // FCKW-Wolke steigt zum Loch, Cl· (grün) am Lochrand
-      const t = ((now / 2400 + k / 22) % 1), px = cx + 4 + t * (hw + 26), py = cy - 12 - t * 26 + Math.sin(k * 2.1 + now / 300) * 2;
-      lctx.globalAlpha = 0.85 - t * 0.5; R(px, py, 1, 1, t > 0.6 ? "#4ee06a" : "#e8e8e8"); lctx.globalAlpha = 1;
+    const at = (ax, ay, c) => R(ax - 1, ay - 1, 2, 2, c), O = "#ff4a3a", CL = "#3ee05a", F = "#d9f27a", C = "#4a4a52";
+    const rad = (ax, ay) => R(ax + 1, ay - 2, 1, 1, "#ffffff"); // Radikalpunkt
+    const T = 9000, t = (now % T) / T, x0 = hc - hw - 8;
+    const OX = [0, 1, 2, 3].map(k => Math.round(x0 - 12 * k)); // O₃ in der Schicht links vom Loch
+    const hitT = j => 0.36 + j * 0.14; // j = 0 … 3, von links (k = 3) nach rechts (k = 0)
+    for (let k = 0; k < 4; k++) if (t < hitT(3 - k)) { at(OX[k] - 2, by + 1, O); at(OX[k], by - 1, O); at(OX[k] + 2, by + 1, O); } // gewinkeltes O₃
+    // CF₂Cl₂ steigt auf, UV-Photon spaltet die C–Cl-Bindung
+    const mx = OX[3] - 16, myEnd = by + 16, my = t < 0.22 ? lerp(by + 44, myEnd, t / 0.22) : myEnd;
+    if (t < 0.24) { at(mx, my, C); at(mx - 3, my - 2, CL); at(mx + 3, my - 2, CL); at(mx - 2, my + 3, F); at(mx + 2, my + 3, F); }
+    else if (t < 0.5) { const f = (t - 0.24) / 0.26, dx = -f * 10, dy = f * 8; lctx.globalAlpha = 1 - f; at(mx + dx, my + dy, C); at(mx - 3 + dx, my - 2 + dy, CL); at(mx - 2 + dx, my + 3 + dy, F); at(mx + 2 + dx, my + 3 + dy, F); rad(mx + dx, my + dy); lctx.globalAlpha = 1; }
+    if (t > 0.16 && t < 0.25) { // hν: violette Zickzack-Welle von oben links
+      const f = (t - 0.16) / 0.08, sx = mx - 30, sy = by - 22, ex = mx + 3, ey = my - 2;
+      for (let j = 0; j <= 24; j++) { const u = j / 24; if (u > f) break; R(lerp(sx, ex, u) + (j % 4 < 2 ? 1 : -1), lerp(sy, ey, u), 1, 1, "#c99bff"); }
+    }
+    // Cl• wandert von O₃ zu O₃: nimmt ein O (→ ClO• + O₂), trifft ein freies O-Atom (→ Cl• + O₂)
+    let cx = mx + 3, cy = my - 2, clo = false;
+    if (t >= 0.24) {
+      cx = lerp(mx + 3, OX[3] - 3, clamp((t - 0.24) / 0.1, 0, 1)); cy = lerp(my - 2, by, clamp((t - 0.24) / 0.1, 0, 1));
+      for (let j = 0; j < 4; j++) {
+        const k = 3 - j, h = hitT(j), prevX = j ? OX[k + 1] + 5 : OX[3] - 3;
+        if (t >= h - 0.04) cx = lerp(prevX, OX[k], clamp((t - h + 0.04) / 0.04, 0, 1));
+        if (t >= h) { cx = lerp(OX[k], OX[k] + 5, clamp((t - h) / 0.06, 0, 1)); clo = t < h + 0.07; }
+      }
+      if (t > hitT(3) + 0.08) cx = lerp(OX[0] + 5, hc, clamp((t - hitT(3) - 0.08) / 0.1, 0, 1)); // ab ins Loch – und weiter
+    }
+    if (t >= 0.24 && t < 0.99) { at(cx, cy, CL); if (clo) at(cx + 2, cy, O); rad(cx, cy); }
+    for (let j = 0; j < 4; j++) { // Produkte: O₂ steigt auf; freies O-Atom kommt von oben (aus O₃ + hν)
+      const k = 3 - j, h = hitT(j);
+      for (const [t0, ox] of [[h, OX[k]], [h + 0.07, OX[k] + 5]]) if (t > t0 && t < t0 + 0.22) {
+        const f = (t - t0) / 0.22; lctx.globalAlpha = 1 - f; at(ox - 1, by - 3 - f * 14, O); at(ox + 1, by - 3 - f * 14, O); lctx.globalAlpha = 1;
+      }
+      if (t > h && t < h + 0.07) { const f = (t - h) / 0.07; at(OX[k] + 7, lerp(by - 12, by, f), O); }
     }
   },
   debris(x, y, now) { // Trümmerwolke nach der Kollision Iridium 33 / Kosmos 2251 (789 km): Bruchstücke auf allen Bahnen
@@ -1846,7 +1869,6 @@ function drawSky(now) {
 // (Faktor FLY_RATIO), damit Objekt und Name lesbar sind; dazwischen zügiger. Die Geschwindigkeit ist überall stetig.
 // Abschnitt [i, i+1]: u = u_i + (u_{i+1} − u_i)·f + (ū − …)·sin²(πf); Zeit je Abschnitt ≈ L/√(u_min·u_max) = FLY_TPS.
 const FLY_TPS = 1.35, FLY_RATIO = 2.6, FLY_RAMP = 0.5;
-let FLY_SPEED = 1; // nur der Rundflug ändert das Tempo
 const flyLen = i => WY(i + 1) - WY(i);
 const flyUmin = i => (i <= 0 ? flyLen(0) : (flyLen(i - 1) + flyLen(i)) / 2) / (FLY_TPS * Math.sqrt(FLY_RATIO));
 async function flyTo(to) {
@@ -1861,7 +1883,7 @@ async function flyTo(to) {
   const T = ts[N], r = Math.min(FLY_RAMP, T), D = T + r; // Trapez-Profil der Zeit: Anfahren und Abbremsen über r Sekunden
   const g = t => (t < r ? t * t / (2 * r) : t > D - r ? T - (D - t) * (D - t) / (2 * r) : t - r / 2);
   let j = 0;
-  await tween(D * 1000 / FLY_SPEED, p => {
+  await tween(D * 1000, p => {
     const t = clamp(g(p * D), 0, T);
     while (j < N - 1 && ts[j + 1] < t) j++;
     while (j > 0 && ts[j] > t) j--;
@@ -2975,32 +2997,8 @@ document.addEventListener("keydown", e => {
   else if (state.phase === "fb" && e.key === "Enter") { next(); e.preventDefault(); }
 });
 setMod(store.get("mod", null)); // letztes Fach vorwählen; beim ersten Besuch wird gefragt
-const RUNDFLUG = location.hash === "#rundflug";
-if (RUNDFLUG) GAME = "schaf"; // nur für diese Seite, die gespeicherte Wahl bleibt
 renderSettings(); show("start"); renderHud();
 requestAnimationFrame(frame);
-// Rundflug (Link mit #rundflug): fliegt ohne Fragen durch alle Stationen – zum Anschauen; es wird nichts gespeichert
-if (RUNDFLUG) (async () => {
-  const bar = document.createElement("div"); bar.id = "rundflug";
-  bar.innerHTML = `<div class="rt" id="rfTxt">Rundflug</div><div class="rb"><button type="button" id="rfPause">⏸ Pause</button>` +
-    `<button type="button" id="rfFast">Tempo ×1</button><button type="button" id="rfBack">◀ Station</button><button type="button" id="rfNext">Station ▶</button>` +
-    `<a href="./" id="rfExit">Zum Spiel</a></div>`;
-  document.body.appendChild(bar);
-  let paused = false, jump = 0, i = 0;
-  $("rfPause").onclick = () => { paused = !paused; $("rfPause").textContent = paused ? "▶ Weiter" : "⏸ Pause"; };
-  $("rfFast").onclick = () => { FLY_SPEED = FLY_SPEED >= 4 ? 1 : FLY_SPEED * 2; $("rfFast").textContent = `Tempo ×${FLY_SPEED}`; };
-  $("rfNext").onclick = () => { jump = 1; }; $("rfBack").onclick = () => { jump = -1; };
-  hideCards(); $("title").hidden = true; $("hud").hidden = true;
-  state.phase = "demo"; Object.assign(sheep, SHEEP0); camMode = "follow";
-  const txt = k => { const st = stnAt(k); $("rfTxt").textContent = `${k} / ${LAST} · ${st.n}${st.alt ? " · " + stnAlt(st) : ""}`; };
-  txt(0); await wait(1500);
-  while (true) {
-    if (jump) { i = clamp(i + jump, 0, LAST); jump = 0; sheep.p = i; camW = WY(i); txt(i); await wait(400); continue; }
-    if (paused || i >= LAST) { await wait(120); continue; }
-    i++; await flyTo(i); txt(i);
-    for (let w = 0; w < 9 && !jump; w++) await wait(100 / FLY_SPEED);
-  }
-})();
 window.__hg = location.hash === "#test" ? { startCeremony, startRaclette, regaRescue, state, goat, ROUTE, walkTo, XT, solHtml, pool, renderHud, fallIntoCrevasse, crushedByBoulder, slideBack, rockfall, trainTo, maybeEncounter, nextQ, cam, leaveHut, drinkWine, randomName, showEnd, setMod, renderSettings, startGame, answer, MODS, checkInput, parseNum, norm, get MOD() { return MOD; }, setGame, sheep, STN, STEP, flyAltTxt, fmtAlt, flyFall, popBalloon, get GAME() { return GAME; }, get camP() { return PW(camW); }, set camP(v) { camW = WY(v); }, WY, PW, GAPF } : undefined;
 })();
 </script>
