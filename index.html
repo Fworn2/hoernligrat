@@ -1163,7 +1163,6 @@ const STN = [ // n: Name, s: Kurzname (Bestenliste/Auswertung), alt: Höhe bzw. 
   { n: "Steinadler", s: "Steinadler", alt: 3000, ap: 1, d: "eagle" },
   { n: "Matterhorn", s: "Matterhorn", alt: 4478, d: "mhorn" },
   { n: "Wolkendecke", s: "Wolken", alt: 6000, ap: 1, d: "clouds" },
-  { n: "Höhe des Mount Everest", s: "Everest", alt: 8849, d: "everest" },
   { n: "Verkehrsflugzeug", s: "Flugzeug", alt: 11000, ap: 1, d: "plane" },
   { n: "Concorde", s: "Concorde", alt: 18000, ap: 1, d: "concorde" },
   { n: "Wetterballon von MeteoSchweiz (Payerne)", s: "Wetterballon", alt: 25 * KM, ap: 1, d: "wballoon" },
@@ -1173,6 +1172,7 @@ const STN = [ // n: Name, s: Kurzname (Bestenliste/Auswertung), alt: Höhe bzw. 
   { n: "Raumstation ISS", s: "ISS", alt: 420 * KM, ap: 1, d: "iss" },
   { n: "Weltraumteleskop Hubble", s: "Hubble", alt: 540 * KM, ap: 1, d: "hubble" },
   { n: "CHEOPS (Uni Bern)", s: "CHEOPS", alt: 700 * KM, ap: 1, d: "cheops" },
+  { n: "Interkontinentalraketen · Bahnscheitel", s: "ICBM", alt: 1200 * KM, ap: 1, d: "icbm" },
   { n: "Innerer Van-Allen-Gürtel", s: "Van Allen", alt: 3000 * KM, ap: 1, d: "vanallen" },
   { n: "GPS-Satelliten", s: "GPS", alt: 20200 * KM, d: "gps" },
   { n: "Geostationäre Bahn · Meteosat", s: "Geostationär", alt: 35786 * KM, d: "geo" },
@@ -1362,7 +1362,20 @@ const OBJ = {
   },
   mhorn() {},
   clouds(x, y, now) { for (let k = 0; k < 7; k++) { const cx = ((k * W / 5 + now / 1000 * 3 * (1 + k % 3)) % (W + 60)) - 30; cumulus(cx, y + (k % 3 - 1) * 9, 18 + (k * 7) % 16); } },
-  everest(x, y) { lctx.globalAlpha = 0.55; for (let xx = 0; xx < W; xx += 5) R(xx, y, 3, 1, "#ffffff"); lctx.globalAlpha = 1; }, // reine Höhenmarke
+  icbm(x, y, now) { // zwei Raketen auf ballistischen Bögen (antriebslose Mittelphase, daher ohne Flamme), gepunktete Bahn
+    for (let k = 0; k < 2; k++) {
+      const dir = k ? -1 : 1, T = 6500 + k * 2300, t = ((now + k * 3100) % T) / T, span = W + 80, x0 = dir > 0 ? -40 : W + 40, arc = 22, base = y + 8 + k * 14;
+      const bx = tt => x0 + dir * tt * span, by = tt => base - arc * Math.sin(Math.PI * tt);
+      lctx.globalAlpha = 0.6; for (let j = 0; j <= 80; j += 2) { const tt = j / 80; if (tt > t) break; R(bx(tt), by(tt), 1, 1, "#ffc2b0"); } lctx.globalAlpha = 1;
+      const ang = Math.atan2(-arc * Math.PI * Math.cos(Math.PI * t), dir * span);
+      lctx.save(); lctx.translate(Math.round(bx(t)), Math.round(by(t))); lctx.rotate(Math.round(ang / (Math.PI / 8)) * (Math.PI / 8));
+      lctx.fillStyle = "#ececec"; lctx.fillRect(-10, -2, 16, 4); lctx.fillStyle = "#cfd6dd"; lctx.fillRect(-10, 1, 16, 1);
+      lctx.fillStyle = "#d8dde3"; lctx.fillRect(6, -2, 2, 4); lctx.fillRect(8, -1, 2, 2); lctx.fillStyle = "#5f5c66"; lctx.fillRect(10, -1, 1, 2);
+      lctx.fillStyle = "#2c4a8b"; lctx.fillRect(-3, -2, 1, 4); lctx.fillRect(-1, -2, 1, 4);
+      lctx.fillStyle = "#6b6873"; lctx.fillRect(-11, -4, 3, 2); lctx.fillRect(-11, 2, 3, 2); lctx.fillRect(-12, -1, 1, 2);
+      lctx.restore();
+    }
+  },
   plane(x, y, now) {
     const px = ((now / 45) % (W + 120)) - 60;
     lctx.globalAlpha = 0.55; R(px - 70, y + 1, 56, 1, "#ffffff"); lctx.globalAlpha = 1;
@@ -1545,13 +1558,22 @@ function drawChalet(x, g) { // Walliser Holzhaus: gemauerter Sockel, sonnengebr�
 function drawWall(x0, x1, g) { // Trockenmauer
   for (let x = Math.round(x0); x < x1; x += 3) { const h = hash(x, 451); R(x, g - 3, 3, 3, h < 0.33 ? "#a39a8c" : h < 0.66 ? "#8d8279" : "#b3a696"); if (h < 0.5) R(x + 1, g - 4, 2, 1, "#a39a8c"); }
 }
-function drawFlagVS(x, g, now) { // Walliser Fahne: weiss/rot mit 13 Sternen in den Gegenfarben
-  x = Math.round(x); R(x, g - 30, 1, 30, "#c3c8ce"); R(x, g - 31, 1, 1, "#c9a14a");
-  const wave = Math.floor(now / 300) % 2, fy = g - 30;
-  for (let c = 0; c < 14; c++) {
-    const dy = wave ? (c > 6 && c < 11 ? 1 : 0) : (c > 3 && c < 8 ? 1 : 0), red = c >= 7;
-    R(x + 1 + c, fy + dy, 1, 9, red ? "#e3001b" : "#f4f4f4");
-    for (let k = 0; k < 9; k++) if ((c * 7 + k * 3) % 5 === 0 && k > 0 && k < 8 && c % 2 === 1) R(x + 1 + c, fy + dy + k, 1, 1, red ? "#f4f4f4" : "#e3001b");
+const FLAG_VS = (() => { // Walliser Fahne 25×26: gespalten von Weiss und Rot, 13 fünfzackige Sterne pfahlweise 4-5-4 in gewechselten Farben
+  const w = 25, h = 26, c = document.createElement("canvas"); c.width = w; c.height = h;
+  const x = c.getContext("2d"), red = px => px >= 13;
+  for (let i = 0; i < w; i++) { x.fillStyle = red(i) ? "#e3001b" : "#f4f4f4"; x.fillRect(i, 0, 1, h); }
+  const STAR = ["..X..", "XXXXX", ".XXX.", ".X.X."];
+  const put = (sx, sy) => STAR.forEach((r, j) => [...r].forEach((ch, i) => { if (ch === "X") { x.fillStyle = red(sx + i) ? "#f4f4f4" : "#e3001b"; x.fillRect(sx + i, sy + j, 1, 1); } }));
+  for (const sy of [4, 9, 14, 19]) { put(2, sy); put(18, sy); }
+  for (const sy of [1, 6, 11, 16, 21]) put(10, sy);
+  return c;
+})();
+function drawFlagVS(x, g, now) { // Fahne weht: Spalten wellenförmig versetzt
+  x = Math.round(x); const top = g - 46;
+  R(x, top - 1, 1, 47, "#b3b8bf"); R(x, top - 2, 1, 1, "#c9a14a");
+  for (let c = 0; c < FLAG_VS.width; c++) {
+    const off = Math.round(Math.sin(c / 4 - now / 260) * 1.4 * (c / FLAG_VS.width));
+    lctx.drawImage(FLAG_VS, c, 0, 1, FLAG_VS.height, x + 1 + c, top + off, 1, FLAG_VS.height);
   }
 }
 function drawFlowers(g) { // Grasbüschel, Edelweiss, Enzian, Alpenrosen
@@ -1564,9 +1586,9 @@ function drawFlowers(g) { // Grasbüschel, Edelweiss, Enzian, Alpenrosen
     else { R(x - 2, y - 2, 5, 2, "#3f6b35"); R(x - 1, y - 3, 1, 1, "#e0457b"); R(x + 1, y - 3, 1, 1, "#e0457b"); R(x, y - 2, 1, 1, "#f06a96"); } // Alpenrose
   }
 }
-function drawFork(x, g) { // Heugabel lehnt am Haufen
-  for (let k = 0; k < 24; k++) R(x + Math.round(k * 0.45), g - 1 - k, 1, 1, "#7a4e2b");
-  const tx = x + 11, ty = g - 26; R(tx - 2, ty, 5, 1, "#9aa0a8"); for (const o of [-2, 0, 2]) R(tx + o, ty - 4, 1, 4, "#9aa0a8");
+function drawFork(x, g) { // Heugabel lehnt links am Haufen (vor hellem Hintergrund gut sichtbar)
+  for (let k = 0; k < 24; k++) R(x - Math.round(k * 0.45), g - 1 - k, 2, 1, "#5a3a22");
+  const tx = x - 11, ty = g - 26; R(tx - 2, ty, 6, 1, "#3a3d44"); for (const o of [-2, 0, 2]) R(tx + o, ty - 5, 1, 5, "#3a3d44");
 }
 function drawSky(now) {
   const L = lctx, sh = cam.shake > 0.3 ? (Math.random() - 0.5) * cam.shake : 0;
@@ -1610,7 +1632,7 @@ function drawSky(now) {
     { const cw = NPC_SPR.cow.c; L.drawImage(cw, Math.round(W * 0.64 - cw.width / 2), g0 - cw.height + 1); } // Eringer Kuh
     drawChalet(W * 0.86, g0); drawLarch(W * 0.965, g0, 22);
     for (const [fx, fl] of [[W * 0.24, true], [W * 0.76, false]]) { L.save(); L.translate(Math.round(fx), g0 - SHEEP.height + 1); if (fl) { L.scale(-1, 1); L.drawImage(SHEEP, -SHEEP.width, 0); } else L.drawImage(SHEEP, 0, 0); L.restore(); }
-    drawFork(HAYX() + HAY_W - 6, g0);
+    drawFork(HAYX() - HAY_W + 6, g0);
     drawHay(HAYX(), g0, sheep.squash);
   }
   // Wolken der unteren Stationen
@@ -1670,7 +1692,7 @@ function drawSky(now) {
     let lx, ly;
     if (i === 0) { lx = W * 0.12; ly = Y(0) - 32; }
     else if (d === "mhorn") { lx = W * 0.78; ly = Y(2) - 6; }
-    else { lx = WIDE.has(d) ? W * 0.5 + (i % 2 ? 1 : -1) * Math.min(W * 0.3, 90) : stnX(i); ly = Y(i) - ({ moon: 34, sun: 38, jupiter: 30, saturn: 20, galcenter: 22, cmb: 32, aurora: 34, clouds: 16, vanallen: 16, helio: 8, edge: 22 }[d] || 15); }
+    else { lx = WIDE.has(d) ? W * 0.5 + (i % 2 ? 1 : -1) * Math.min(W * 0.3, 90) : stnX(i); ly = Y(i) - ({ icbm: 30, moon: 34, sun: 38, jupiter: 30, saturn: 20, galcenter: 22, cmb: 32, aurora: 34, clouds: 16, vanallen: 16, helio: 8, edge: 22 }[d] || 15); }
     const label = `${st.n}  ${stnAlt(st)}`, tw = ctx.measureText(label).width;
     const x = clamp(lx * S - tw / 2, 6, innerWidth - tw - 10), y = ly * S;
     if (y < -20 || y > innerHeight + 20) continue;
